@@ -98,4 +98,6 @@ public:
 //
 void RM_PrintError(RC rc);
 
+#define RM_UNINITIALIZED_RID	(START_RM_ERR - 0)
+
 #endif

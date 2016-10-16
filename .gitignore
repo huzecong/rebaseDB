@@ -1,0 +1,9 @@
+build
+lib
+
+# Vim tmp files
+**/*.swp
+**/*.swo
+
+# YCM config
+**/*.ycm_extra_conf.py*

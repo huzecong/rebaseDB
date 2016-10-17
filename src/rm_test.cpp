@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cassert>
 #include <unistd.h>
 
 #include "redbase.h"
@@ -66,6 +67,8 @@ RC Test1(void);
 RC Test2(void);
 RC Test3(void);
 RC Test4(void);
+RC Test5(void);
+RC Test6(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -86,14 +89,16 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       4               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
     Test3,
     Test4,
+    Test5,
+    Test6,
 };
+#define NUM_TESTS       ((sizeof(tests)) / sizeof(tests[0]))    // number of tests
 
 //
 // main
@@ -548,18 +553,129 @@ RC Test4(void)
         (rc = VerifyFile(fh, FEW_RECS)))
         return (rc);
 
-    RM_FileScan scan;
     int numComp = 10;
+    RM_FileScan scan;
+    printf("scanning records whose num <= %d\n", numComp);
     TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
-                NE_OP, (void*)&numComp));
-    // TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
-                // NO_OP, NULL));
-    PrintFile(scan);
+                LT_OP, (void*)&numComp));
+    {
+        int rc, n = 0;
+        RM_Record rec;
+        while (true) {
+            rc = scan.GetNextRec(rec);
+            if (rc == RM_EOF) {
+                break;
+            } else if (rc != 0) {
+                return rc;
+            }
+            ++n;
+            char* data;
+            rec.GetData(data);
+            assert(((TestRec *)data)->num < numComp);
+        }
+        printf("%d records found.\n", n);
+        assert(n == numComp);
+    }
 
     if ((rc = CloseFile((char *)FILENAME, fh)) ||
         (rc = DestroyFile((char *)FILENAME)))
         return (rc);
 
     printf("\ntest4 done ********************\n");
+    return (0);
+}
+
+//
+// Test5 tests updating some records
+//
+RC Test5(void) {
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test5 starting ****************\n");
+
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)))
+        return (rc);
+
+    RM_Record rec;
+    RM_FileScan sc;
+
+    TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
+    for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
+        if (rc) {
+            return rc;
+        }
+        TestRec* data;
+        rec.GetData(CVOID(data));
+        data->num++;
+        TRY(fh.UpdateRec(rec));
+    }
+    TRY(sc.CloseScan());
+
+    TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
+    for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
+        if (rc) {
+            return rc;
+        }
+        TestRec* data;
+        rec.GetData(CVOID(data));
+        int old_num;
+        sscanf(data->str, "a%d", &old_num);
+        assert(old_num + 1 == data->num);
+    }
+    TRY(sc.CloseScan());
+
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
+
+    printf("\ntest5 done ********************\n");
+    return (0);
+}
+
+//
+// Test6 tests updating some records
+//
+RC Test6(void) {
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test6 starting ****************\n");
+
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)))
+        return (rc);
+
+    RM_Record rec;
+    RM_FileScan sc;
+
+    char searchStr[] = {"a8"};
+
+    // delete the record whose str = searchStr
+    TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
+                EQ_OP, searchStr));
+    TRY(sc.GetNextRec(rec));
+    assert(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
+
+    RID rid;
+    TRY(rec.GetRid(rid));
+    TRY(fh.DeleteRec(rid));
+
+    TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
+            EQ_OP, searchStr));
+    assert(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
+
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
+
+    printf("\ntest6 done ********************\n");
     return (0);
 }

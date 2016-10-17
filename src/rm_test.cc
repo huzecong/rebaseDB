@@ -459,14 +459,14 @@ RC Test1(void)
 
     printf("test1 starting ****************\n");
 
-    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
-        (rc = OpenFile(FILENAME, fh)) ||
-        (rc = CloseFile(FILENAME, fh)))
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = CloseFile((char *)FILENAME, fh)))
         return (rc);
 
-    LsFile(FILENAME);
+    LsFile((char *)FILENAME);
 
-    if ((rc = DestroyFile(FILENAME)))
+    if ((rc = DestroyFile((char *)FILENAME)))
         return (rc);
 
     printf("\ntest1 done ********************\n");
@@ -483,15 +483,15 @@ RC Test2(void)
 
     printf("test2 starting ****************\n");
 
-    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
-        (rc = OpenFile(FILENAME, fh)) ||
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
         (rc = AddRecs(fh, FEW_RECS)) ||
-        (rc = CloseFile(FILENAME, fh)))
+        (rc = CloseFile((char *)FILENAME, fh)))
         return (rc);
 
-    LsFile(FILENAME);
+    LsFile((char *)FILENAME);
 
-    if ((rc = DestroyFile(FILENAME)))
+    if ((rc = DestroyFile((char *)FILENAME)))
         return (rc);
 
     printf("\ntest2 done ********************\n");

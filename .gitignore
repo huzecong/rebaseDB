@@ -1,6 +1,9 @@
 build
 lib
 
+# CLion config
+.idea/
+
 # Vim tmp files
 **/*.swp
 **/*.swo

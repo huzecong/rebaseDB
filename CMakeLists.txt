@@ -10,6 +10,7 @@ file(GLOB CPP_SOURCE_FILES
         )
 set(SOURCE_FILES
         ${CPP_SOURCE_FILES}
+        src/rm_test.cpp
         )
 
 add_executable(redbase ${SOURCE_FILES})

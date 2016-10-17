@@ -32,9 +32,10 @@ using namespace std;
 //
 #define FILENAME   "testrel"         // test file name
 #define STRLEN      29               // length of string in testrec
-#define PROG_UNIT   50               // how frequently to give progress
+#define PROG_UNIT   500               // how frequently to give progress
                                       //   reports when adding lots of recs
 #define FEW_RECS   20                // number of records added in
+#define LOTS_OF_RECS 12345
 
 //
 // Computes the offset of a field in a record (should be in <stddef.h>)
@@ -63,6 +64,7 @@ RM_Manager rmm(pfm);
 //
 RC Test1(void);
 RC Test2(void);
+RC Test3(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -83,11 +85,12 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       2               // number of tests
+#define NUM_TESTS       3               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
-    Test2
+    Test2,
+    Test3
 };
 
 //
@@ -235,6 +238,8 @@ RC AddRecs(RM_FileHandle &fh, int numRecs)
     else
         putchar('\n');
 
+	printf("Page/Slot: %d %d\n", pageNum, slotNum);
+	
     // Return ok
     return (0);
 }
@@ -486,6 +491,7 @@ RC Test2(void)
     if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
         (rc = OpenFile((char *)FILENAME, fh)) ||
         (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)) ||
         (rc = CloseFile((char *)FILENAME, fh)))
         return (rc);
 
@@ -496,4 +502,30 @@ RC Test2(void)
 
     printf("\ntest2 done ********************\n");
     return (0);
+}
+
+//
+// Test3 tests adding a large number of records to a file.
+//
+RC Test3(void)
+{
+	RC            rc;
+	RM_FileHandle fh;
+	
+	printf("test2 starting ****************\n");
+	
+	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+	    (rc = OpenFile((char *)FILENAME, fh)) ||
+	    (rc = AddRecs(fh, LOTS_OF_RECS)) ||
+	    (rc = VerifyFile(fh, LOTS_OF_RECS)) ||
+	    (rc = CloseFile((char *)FILENAME, fh)))
+		return (rc);
+	
+	LsFile((char *)FILENAME);
+	
+	if ((rc = DestroyFile((char *)FILENAME)))
+		return (rc);
+	
+	printf("\ntest2 done ********************\n");
+	return (0);
 }

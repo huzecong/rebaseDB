@@ -21,4 +21,16 @@ struct RM_FileHeader {
 	int firstFreePage;
 };
 
+inline bool getBitMap(unsigned char *bitMap, int pos) {
+	return (bool)(bitMap[pos >> 3] >> (pos & 0x7) & 1);
+}
+
+inline void setBitMap(unsigned char *bitMap, int pos, bool value) {
+	if (value) {
+		bitMap[pos >> 3] |= (unsigned char)(1 << (pos & 0x7));
+	} else {
+		bitMap[pos >> 3] &= (unsigned char)~(1 << (pos & 0x7));
+	}
+}
+
 #endif //REBASE_RM_INTERNAL_H

@@ -70,6 +70,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	memcpy(destination, pData, (size_t)recordSize);
 	++((RM_PageHeader *)data)->allocatedRecords;
 	setBitMap(((RM_PageHeader *)data)->occupiedBitMap, slotNum, true);
+	rid = RID(pageNum, slotNum);
 	
 	TRY(pfHandle.MarkDirty(pageNum));
 	TRY(pfHandle.UnpinPage(pageNum));
@@ -127,16 +128,4 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 
 RC RM_FileHandle::ForcePages(PageNum pageNum) {
 	return pfHandle.ForcePages(pageNum);
-}
-
-bool RM_FileHandle::getBitMap(unsigned char *bitMap, int pos) {
-	return (bool)(bitMap[pos >> 3] >> (pos & 0x7) & 1);
-}
-
-void RM_FileHandle::setBitMap(unsigned char *bitMap, int pos, bool value) {
-	if (value) {
-		bitMap[pos >> 3] |= (unsigned char)(1 << (pos & 0x7));
-	} else {
-		bitMap[pos >> 3] &= (unsigned char)~(1 << (pos & 0x7));
-	}
 }

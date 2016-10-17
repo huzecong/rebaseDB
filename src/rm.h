@@ -28,6 +28,7 @@
 //
 class RM_Record {
 	friend class RM_FileHandle;
+	friend class RM_FileScan;
 	
 	char *pData;
 	RID rid;
@@ -48,6 +49,7 @@ public:
 //
 class RM_FileHandle {
 	friend class RM_Manager;
+	friend class RM_FileScan;
 	
 	PF_FileHandle pfHandle;
 	short recordSize;
@@ -55,9 +57,6 @@ class RM_FileHandle {
 	int firstFreePage;
 	short pageHeaderSize;
 	bool isHeaderDirty;
-	
-	bool getBitMap(unsigned char *bitMap, int pos);
-	void setBitMap(unsigned char *bitMap, int pos, bool value);
 public:
     RM_FileHandle ();
     ~RM_FileHandle();
@@ -79,6 +78,23 @@ public:
 // RM_FileScan: condition-based scan of records in the file
 //
 class RM_FileScan {
+	const RM_FileHandle *fileHandle;
+	AttrType attrType;
+	int attrLength;
+	int attrOffset;
+	CompOp compOp;
+	union {
+		int intVal;
+		float floatVal;
+		char *stringVal;
+	} value;
+	
+	bool scanOpened;
+	PageNum currentPageNum;
+	SlotNum currentSlotNum;
+	short recordSize;
+	
+	bool checkSatisfy(char *data);
 public:
     RM_FileScan  ();
     ~RM_FileScan ();
@@ -117,10 +133,15 @@ void RM_PrintError(RC rc);
 
 #define RM_FILE_NOT_OPENED      (START_RM_WARN + 0) // file is not opened
 #define RM_SLOTNUM_OUT_OF_RANGE (START_RM_WARN + 1) // SlotNum < 0 || >= records/page
-#define RM_RECORD_DELETED       (START_RM_WARN + 2) // record already free
+#define RM_RECORD_DELETED       (START_RM_WARN + 2) // record already deleted
 #define RM_EOF                  (START_RM_WARN + 3)
+#define RM_UNINITIALIZED_RECORD (START_RM_WARN + 4)
+#define RM_UNINITIALIZED_RID	(START_RM_WARN + 5)
+#define RM_SCAN_NOT_OPENED      (START_RM_WARN + 6)
+#define RM_SCAN_NOT_CLOSED      (START_RM_WARN + 7)
+#define RM_LASTWARN             RM_SCAN_NOT_CLOSED
 
-#define RM_UNINITIALIZED_RID	(START_RM_ERR - 0)
-#define RM_RECORDSIZE_TOO_LARGE (START_RM_ERR - 1) // record size larger than PF_PAGE_SIZE
+#define RM_RECORDSIZE_TOO_LARGE (START_RM_ERR - 0) // record size larger than PF_PAGE_SIZE
+#define RM_LASTERROR            RM_RECORDSIZE_TOO_LARGE
 
 #endif

@@ -2,6 +2,7 @@
 // Created by Kanari on 2016/10/16.
 //
 
+#include <cstring>
 #include "pf.h"
 #include "rm.h"
 
@@ -29,10 +30,20 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 	if (((recordsPerPage + 3) & (~0x3)) + sizeof(RM_PageHeader) +
 			    recordSize * recordsPerPage > PF_PAGE_SIZE)
 		--recordsPerPage;
-	*(RM_FileHeader *)data = {(short)recordSize, kLastFreePage, recordsPerPage};
+	*(RM_FileHeader *)data = {(short)recordSize, recordsPerPage, kLastFreePage};
 	
 	TRY(fileHandle.MarkDirty(0));
 	TRY(fileHandle.UnpinPage(0));
+	
+	TRY(fileHandle.AllocatePage(pageHandle));
+	TRY(pageHandle.GetData(data));
+	
+	*(RM_PageHeader *)data = {kLastFreeRecord, 0, kLastFreePage};
+	memset(data + sizeof(RM_PageHeader) - 1, 0, (size_t)((recordsPerPage + 3) & (~0x3)));
+	
+	TRY(fileHandle.MarkDirty(1));
+	TRY(fileHandle.UnpinPage(1));
+	
 	TRY(pfm->CloseFile(fileHandle));
 	return 0;
 }

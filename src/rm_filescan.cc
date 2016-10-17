@@ -2,9 +2,11 @@
 // Created by Kanari on 2016/10/17.
 //
 
+#include "rm.h"
+
 #include <cstring>
 #include <cstdio>
-#include "rm.h"
+#include <cassert>
 
 RM_FileScan::RM_FileScan() {
 	scanOpened = false;
@@ -152,4 +154,5 @@ bool RM_FileScan::checkSatisfy(char *data) {
 			}
 		}
 	}
+    assert(0);
 }

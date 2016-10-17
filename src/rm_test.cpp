@@ -15,11 +15,11 @@
 // relation.  All scans are done via a FileScan.
 //
 
-#include <cstdio>
 #include <iostream>
+#include <cstdio>
 #include <cstring>
-#include <unistd.h>
 #include <cstdlib>
+#include <unistd.h>
 
 #include "redbase.h"
 #include "pf.h"
@@ -65,6 +65,7 @@ RM_Manager rmm(pfm);
 RC Test1(void);
 RC Test2(void);
 RC Test3(void);
+RC Test4(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -85,12 +86,13 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       3               // number of tests
+#define NUM_TESTS       4               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
-    Test3
+    Test3,
+    Test4,
 };
 
 //
@@ -238,8 +240,8 @@ RC AddRecs(RM_FileHandle &fh, int numRecs)
     else
         putchar('\n');
 
-	printf("Page/Slot: %d %d\n", pageNum, slotNum);
-	
+    printf("Page/Slot: %d %d\n", pageNum, slotNum);
+
     // Return ok
     return (0);
 }
@@ -509,23 +511,56 @@ RC Test2(void)
 //
 RC Test3(void)
 {
-	RC            rc;
-	RM_FileHandle fh;
-	
-	printf("test2 starting ****************\n");
-	
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-	    (rc = OpenFile((char *)FILENAME, fh)) ||
-	    (rc = AddRecs(fh, LOTS_OF_RECS)) ||
-	    (rc = VerifyFile(fh, LOTS_OF_RECS)) ||
-	    (rc = CloseFile((char *)FILENAME, fh)))
-		return (rc);
-	
-	LsFile((char *)FILENAME);
-	
-	if ((rc = DestroyFile((char *)FILENAME)))
-		return (rc);
-	
-	printf("\ntest2 done ********************\n");
-	return (0);
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test3 starting ****************\n");
+
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, LOTS_OF_RECS)) ||
+        (rc = VerifyFile(fh, LOTS_OF_RECS)) ||
+        (rc = CloseFile((char *)FILENAME, fh)))
+        return (rc);
+
+    LsFile((char *)FILENAME);
+
+    if ((rc = DestroyFile((char *)FILENAME)))
+        return (rc);
+
+    printf("\ntest3 done ********************\n");
+    return (0);
 }
+
+//
+// Test4 tests scanning the record
+//
+RC Test4(void)
+{
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test4 starting ****************\n");
+
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)))
+        return (rc);
+
+    RM_FileScan scan;
+    int numComp = 10;
+    TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
+                NE_OP, (void*)&numComp));
+    // TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
+                // NO_OP, NULL));
+    PrintFile(scan);
+
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
+
+    printf("\ntest4 done ********************\n");
+    return (0);
+}
+

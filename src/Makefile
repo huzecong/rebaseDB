@@ -23,7 +23,7 @@ LEX            = flex
 # -O1 - Basic optimization
 # -Wall - All warnings
 # -DDEBUG_PF - This turns on the LOG file for lots of BufferMgr info
-CFLAGS         = -m32 -g -O1 -Wall $(STATS_OPTION) $(INC_DIRS)
+CFLAGS         = -m32 -std=c++11 -g -O1 -Wall $(STATS_OPTION) $(INC_DIRS)
 
 # The STATS_OPTION can be set to -DPF_STATS or to nothing to turn on and
 # off buffer manager statistics.  The student should not modify this
@@ -36,13 +36,14 @@ STATS_OPTION   = -DPF_STATS
 PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
                  pf_pagehandle.cc pf_hashtable.cc pf_manager.cc \
                  pf_statistics.cc statistics.cc
-RM_SOURCES     = statistics.cc
+RM_SOURCES     = rm_error.cc rm_filehandle.cc rm_filescan.cc \
+		 rm_manager.cc rm_record.cc rm_rid.cc statistics.cc
 IX_SOURCES     = statistics.cc
 SM_SOURCES     = statistics.cc #sm_stub.cc printer.cc
 QL_SOURCES     = statistics.cc #ql_manager_stub.cc
 UTILS_SOURCES  = #dbcreate.cc dbdestroy.cc redbase.cc
 PARSER_SOURCES = statistics.cc #scan.c parse.c nodes.c interp.c
-TESTER_SOURCES = pf_test1.cc pf_test2.cc pf_test3.cc #rm_test.cc ix_test.cc parser_test.cc
+TESTER_SOURCES = pf_test1.cpp pf_test2.cpp pf_test3.cpp rm_test.cpp #ix_test.cpp parser_test.cpp
 
 PF_OBJECTS     = $(addprefix $(BUILD_DIR), $(PF_SOURCES:.cc=.o))
 RM_OBJECTS     = $(addprefix $(BUILD_DIR), $(RM_SOURCES:.cc=.o))
@@ -51,7 +52,7 @@ SM_OBJECTS     = $(addprefix $(BUILD_DIR), $(SM_SOURCES:.cc=.o))
 QL_OBJECTS     = $(addprefix $(BUILD_DIR), $(QL_SOURCES:.cc=.o))
 UTILS_OBJECTS  = $(addprefix $(BUILD_DIR), $(UTILS_SOURCES:.cc=.o))
 PARSER_OBJECTS = $(addprefix $(BUILD_DIR), $(PARSER_SOURCES:.cc=.o))
-TESTER_OBJECTS = $(addprefix $(BUILD_DIR), $(TESTER_SOURCES:.cc=.o))
+TESTER_OBJECTS = $(addprefix $(BUILD_DIR), $(TESTER_SOURCES:.cpp=.o))
 OBJECTS        = $(PF_OBJECTS) $(RM_OBJECTS) $(IX_OBJECTS) \
                  $(SM_OBJECTS) $(QL_OBJECTS) $(PARSER_OBJECTS) \
                  $(TESTER_OBJECTS) $(UTILS_OBJECTS)
@@ -66,7 +67,7 @@ LIBRARIES      = $(LIBRARY_PF) $(LIBRARY_RM) $(LIBRARY_IX) \
                  $(LIBRARY_SM) $(LIBRARY_QL) $(LIBRARY_PARSER)
 
 UTILS          = $(UTILS_SOURCES:.cc=)
-TESTS          = $(TESTER_SOURCES:.cc=)
+TESTS          = $(TESTER_SOURCES:.cpp=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
 LIBS           = -lparser -lql -lsm -lix -lrm -lpf
@@ -133,6 +134,13 @@ $(BUILD_DIR)interp.o: interp.c
 -include $(OBJECTS:.o=.d)
 
 $(BUILD_DIR)%.d: %.cc
+	@set -e; \
+	 rm -f $@; \
+	 $(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@.$$$$; \
+	 sed 's,\($*\)\.o[ :]*,\1.o $@: ,g' $@.$$$$ > $@; \
+	 rm -f $@.$$$$
+
+$(BUILD_DIR)%.d: %.cpp
 	@set -e; \
 	 rm -f $@; \
 	 $(CC) $(CFLAGS) -MM -MT $(@:.d=.o) $< > $@.$$$$; \

@@ -5,7 +5,6 @@
 #include "rm.h"
 
 #include <cstring>
-#include <cstdio>
 #include <cassert>
 
 RM_FileScan::RM_FileScan() {
@@ -22,20 +21,21 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
 	this->attrLength = attrLength;
 	this->attrOffset = attrOffset;
 	this->compOp = compOp;
-	switch (attrType) {
-		case INT:
-			this->value.intVal = *(int *)&value;
-			break;
-		case FLOAT:
-			this->value.floatVal = *(float *)&value;
-			break;
-		case STRING:
-			if (value != NULL) this->value.stringVal = NULL;
-			else {
+	if (value == NULL) {
+		this->value.stringVal = NULL;
+	} else {
+		switch (attrType) {
+			case INT:
+				this->value.intVal = *(int *)value;
+				break;
+			case FLOAT:
+				this->value.floatVal = *(float *)value;
+				break;
+			case STRING:
 				this->value.stringVal = new char[attrLength];
 				memcpy(this->value.stringVal, value, (size_t)attrLength);
-			}
-			break;
+				break;
+		}
 	}
 	
 	char *data;
@@ -154,5 +154,5 @@ bool RM_FileScan::checkSatisfy(char *data) {
 			}
 		}
 	}
-    assert(0);
+	assert(0);
 }

@@ -98,7 +98,7 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test5,
     Test6,
 };
-#define NUM_TESTS       ((sizeof(tests)) / sizeof(tests[0]))    // number of tests
+#define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
 //
 // main

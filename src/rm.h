@@ -23,18 +23,26 @@
 #include "pf.h"
 #include "rm_internal.h"
 
+#include <cstring>
+
 //
 // RM_Record: RM Record interface
 //
 class RM_Record {
-	friend class RM_FileHandle;
-	friend class RM_FileScan;
+    friend class RM_FileHandle;
+    friend class RM_FileScan;
 	
 	char *pData;
 	RID rid;
 public:
     RM_Record ();
+    RM_Record(const RM_Record&) = delete;
     ~RM_Record();
+
+    RM_Record& operator=(const RM_Record&) = delete;
+
+    void SetData(char *data, size_t size);
+    void UpdateData(char *data, size_t size);
 
     // Return the data corresponding to the record.  Sets *pData to the
     // record contents.

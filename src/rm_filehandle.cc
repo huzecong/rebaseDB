@@ -27,8 +27,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	TRY(pageHandle.GetData(data));
 	
 	rec.rid = rid;
-	rec.pData = new char[recordSize];
-	memcpy(rec.pData, data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
+    rec.SetData(data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
 	
 	TRY(pfHandle.UnpinPage(pageNum));
 	return 0;

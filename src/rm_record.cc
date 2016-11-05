@@ -30,4 +30,3 @@ RC RM_Record::GetRid(RID &rid) const {
 	rid = this->rid;
 	return pData == NULL ? RM_UNINITIALIZED_RECORD : 0;
 }
-

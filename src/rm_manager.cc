@@ -25,25 +25,25 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 	TRY(pfm->OpenFile(fileName, fileHandle));
 	TRY(fileHandle.AllocatePage(pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	short recordsPerPage = (PF_PAGE_SIZE - sizeof(RM_PageHeader)) / (recordSize + 1);
 	if (((recordsPerPage + 3) & (~0x3)) + sizeof(RM_PageHeader) +
-			    recordSize * recordsPerPage > PF_PAGE_SIZE)
+			recordSize * recordsPerPage > PF_PAGE_SIZE)
 		--recordsPerPage;
 	*(RM_FileHeader *)data = {(short)recordSize, recordsPerPage, kLastFreePage};
-	
+
 	TRY(fileHandle.MarkDirty(0));
 	TRY(fileHandle.UnpinPage(0));
-	
+
 	TRY(fileHandle.AllocatePage(pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	*(RM_PageHeader *)data = {kLastFreeRecord, 0, kLastFreePage};
 	memset(data + sizeof(RM_PageHeader) - 1, 0, (size_t)((recordsPerPage + 3) & (~0x3)));
-	
+
 	TRY(fileHandle.MarkDirty(1));
 	TRY(fileHandle.UnpinPage(1));
-	
+
 	TRY(pfm->CloseFile(fileHandle));
 	return 0;
 }
@@ -60,13 +60,13 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
 	char *data;
 	TRY(pfHandle.GetFirstPage(pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	fileHandle.recordSize = ((RM_FileHeader *)data)->recordSize;
 	fileHandle.recordsPerPage = ((RM_FileHeader *)data)->recordsPerPage;
 	fileHandle.firstFreePage = ((RM_FileHeader *)data)->firstFreePage;
 	fileHandle.isHeaderDirty = false;
 	fileHandle.pageHeaderSize = sizeof(RM_PageHeader) + ((fileHandle.recordsPerPage + 3) & (~0x3));
-	
+
 	TRY(pfHandle.UnpinPage(0));
 	return 0;
 }
@@ -77,7 +77,7 @@ RC RM_Manager::CloseFile(RM_FileHandle &fileHandle) {
 		char *data;
 		TRY(fileHandle.pfHandle.GetFirstPage(pageHandle));
 		TRY(pageHandle.GetData(data));
-		
+
 		*(RM_FileHeader *)data = {fileHandle.recordSize,
 		                          fileHandle.recordsPerPage,
 		                          fileHandle.firstFreePage};

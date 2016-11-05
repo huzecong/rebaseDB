@@ -23,8 +23,8 @@
 //
 PF_Manager::PF_Manager()
 {
-   // Create Buffer Manager
-   pBufferMgr = new PF_BufferMgr(PF_BUFFER_SIZE);
+	// Create Buffer Manager
+	pBufferMgr = new PF_BufferMgr(PF_BUFFER_SIZE);
 }
 
 //
@@ -36,8 +36,8 @@ PF_Manager::PF_Manager()
 //
 PF_Manager::~PF_Manager()
 {
-   // Destroy the buffer manager objects
-   delete pBufferMgr;
+	// Destroy the buffer manager objects
+	delete pBufferMgr;
 }
 
 //
@@ -49,50 +49,50 @@ PF_Manager::~PF_Manager()
 //
 RC PF_Manager::CreateFile (const char *fileName)
 {
-   int fd;		// unix file descriptor
-   int numBytes;		// return code form write syscall
+	int fd;		// unix file descriptor
+	int numBytes;		// return code form write syscall
 
-   // Create file for exclusive use
-   if ((fd = open(fileName,
+	// Create file for exclusive use
+	if ((fd = open(fileName,
 #ifdef PC
-         O_BINARY |
+			O_BINARY |
 #endif
-         O_CREAT | O_EXCL | O_WRONLY,
-         CREATION_MASK)) < 0)
-      return (PF_UNIX);
+			O_CREAT | O_EXCL | O_WRONLY,
+			CREATION_MASK)) < 0)
+		return (PF_UNIX);
 
-   // Initialize the file header: must reserve FileHdrSize bytes in memory
-   // though the actual size of FileHdr is smaller
-   char hdrBuf[PF_FILE_HDR_SIZE];
+	// Initialize the file header: must reserve FileHdrSize bytes in memory
+	// though the actual size of FileHdr is smaller
+	char hdrBuf[PF_FILE_HDR_SIZE];
 
-   // So that Purify doesn't complain
-   memset(hdrBuf, 0, PF_FILE_HDR_SIZE);
+	// So that Purify doesn't complain
+	memset(hdrBuf, 0, PF_FILE_HDR_SIZE);
 
-   PF_FileHdr *hdr = (PF_FileHdr*)hdrBuf;
-   hdr->firstFree = PF_PAGE_LIST_END;
-   hdr->numPages = 0;
+	PF_FileHdr *hdr = (PF_FileHdr*)hdrBuf;
+	hdr->firstFree = PF_PAGE_LIST_END;
+	hdr->numPages = 0;
 
-   // Write header to file
-   if((numBytes = write(fd, hdrBuf, PF_FILE_HDR_SIZE))
-         != PF_FILE_HDR_SIZE) {
+	// Write header to file
+	if((numBytes = write(fd, hdrBuf, PF_FILE_HDR_SIZE))
+			!= PF_FILE_HDR_SIZE) {
 
-      // Error while writing: close and remove file
-      close(fd);
-      unlink(fileName);
+		// Error while writing: close and remove file
+		close(fd);
+		unlink(fileName);
 
-      // Return an error
-      if(numBytes < 0)
-         return (PF_UNIX);
-      else
-         return (PF_HDRWRITE);
-   }
+		// Return an error
+		if(numBytes < 0)
+			return (PF_UNIX);
+		else
+			return (PF_HDRWRITE);
+	}
 
-   // Close file
-   if(close(fd) < 0)
-      return (PF_UNIX);
+	// Close file
+	if(close(fd) < 0)
+		return (PF_UNIX);
 
-   // Return ok
-   return (0);
+	// Return ok
+	return (0);
 }
 
 //
@@ -104,12 +104,12 @@ RC PF_Manager::CreateFile (const char *fileName)
 //
 RC PF_Manager::DestroyFile (const char *fileName)
 {
-   // Remove the file
-   if (unlink(fileName) < 0)
-      return (PF_UNIX);
+	// Remove the file
+	if (unlink(fileName) < 0)
+		return (PF_UNIX);
 
-   // Return ok
-   return (0);
+	// Return ok
+	return (0);
 }
 
 //
@@ -131,47 +131,47 @@ RC PF_Manager::DestroyFile (const char *fileName)
 //
 RC PF_Manager::OpenFile (const char *fileName, PF_FileHandle &fileHandle)
 {
-   int rc;                   // return code
+	int rc;                   // return code
 
-   // Ensure file is not already open
-   if (fileHandle.bFileOpen)
-      return (PF_FILEOPEN);
+	// Ensure file is not already open
+	if (fileHandle.bFileOpen)
+		return (PF_FILEOPEN);
 
-   // Open the file
-   if ((fileHandle.unixfd = open(fileName,
+	// Open the file
+	if ((fileHandle.unixfd = open(fileName,
 #ifdef PC
-         O_BINARY |
+			O_BINARY |
 #endif
-         O_RDWR)) < 0)
-      return (PF_UNIX);
+			O_RDWR)) < 0)
+		return (PF_UNIX);
 
-   // Read the file header
-   {
-      int numBytes = read(fileHandle.unixfd, (char *)&fileHandle.hdr,
-            sizeof(PF_FileHdr));
-      if (numBytes != sizeof(PF_FileHdr)) {
-         rc = (numBytes < 0) ? PF_UNIX : PF_HDRREAD;
-         goto err;
-      }
-   }
+	// Read the file header
+	{
+		int numBytes = read(fileHandle.unixfd, (char *)&fileHandle.hdr,
+				sizeof(PF_FileHdr));
+		if (numBytes != sizeof(PF_FileHdr)) {
+			rc = (numBytes < 0) ? PF_UNIX : PF_HDRREAD;
+			goto err;
+		}
+	}
 
-   // Set file header to be not changed
-   fileHandle.bHdrChanged = FALSE;
+	// Set file header to be not changed
+	fileHandle.bHdrChanged = FALSE;
 
-   // Set local variables in file handle object to refer to open file
-   fileHandle.pBufferMgr = pBufferMgr;
-   fileHandle.bFileOpen = TRUE;
+	// Set local variables in file handle object to refer to open file
+	fileHandle.pBufferMgr = pBufferMgr;
+	fileHandle.bFileOpen = TRUE;
 
-   // Return ok
-   return 0;
+	// Return ok
+	return 0;
 
 err:
-   // Close file
-   close(fileHandle.unixfd);
-   fileHandle.bFileOpen = FALSE;
+	// Close file
+	close(fileHandle.unixfd);
+	fileHandle.bFileOpen = FALSE;
 
-   // Return error
-   return (rc);
+	// Return error
+	return (rc);
 }
 
 //
@@ -188,26 +188,26 @@ err:
 //
 RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 {
-   RC rc;
+	RC rc;
 
-   // Ensure fileHandle refers to open file
-   if (!fileHandle.bFileOpen)
-      return (PF_CLOSEDFILE);
+	// Ensure fileHandle refers to open file
+	if (!fileHandle.bFileOpen)
+		return (PF_CLOSEDFILE);
 
-   // Flush all buffers for this file and write out the header
-   if ((rc = fileHandle.FlushPages()))
-      return (rc);
+	// Flush all buffers for this file and write out the header
+	if ((rc = fileHandle.FlushPages()))
+		return (rc);
 
-   // Close the file
-   if (close(fileHandle.unixfd) < 0)
-      return (PF_UNIX);
-   fileHandle.bFileOpen = FALSE;
+	// Close the file
+	if (close(fileHandle.unixfd) < 0)
+		return (PF_UNIX);
+	fileHandle.bFileOpen = FALSE;
 
-   // Reset the buffer manager pointer in the file handle
-   fileHandle.pBufferMgr = NULL;
+	// Reset the buffer manager pointer in the file handle
+	fileHandle.pBufferMgr = NULL;
 
-   // Return ok
-   return 0;
+	// Return ok
+	return 0;
 }
 
 //
@@ -224,7 +224,7 @@ RC PF_Manager::CloseFile(PF_FileHandle &fileHandle)
 //
 RC PF_Manager::ClearBuffer()
 {
-   return pBufferMgr->ClearBuffer();
+	return pBufferMgr->ClearBuffer();
 }
 
 //
@@ -239,7 +239,7 @@ RC PF_Manager::ClearBuffer()
 //
 RC PF_Manager::PrintBuffer()
 {
-   return pBufferMgr->PrintBuffer();
+	return pBufferMgr->PrintBuffer();
 }
 
 //
@@ -255,7 +255,7 @@ RC PF_Manager::PrintBuffer()
 //
 RC PF_Manager::ResizeBuffer(int iNewSize)
 {
-   return pBufferMgr->ResizeBuffer(iNewSize);
+	return pBufferMgr->ResizeBuffer(iNewSize);
 }
 
 //------------------------------------------------------------------------------
@@ -269,15 +269,15 @@ RC PF_Manager::ResizeBuffer(int iNewSize)
 
 RC PF_Manager::GetBlockSize(int &length) const
 {
-   return pBufferMgr->GetBlockSize(length);
+	return pBufferMgr->GetBlockSize(length);
 }
 
 RC PF_Manager::AllocateBlock(char *&buffer)
 {
-   return pBufferMgr->AllocateBlock(buffer);
+	return pBufferMgr->AllocateBlock(buffer);
 }
 
 RC PF_Manager::DisposeBlock(char *buffer)
 {
-   return pBufferMgr->DisposeBlock(buffer);
+	return pBufferMgr->DisposeBlock(buffer);
 }

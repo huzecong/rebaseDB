@@ -14,11 +14,11 @@ RM_Record::~RM_Record() {
 }
 
 void RM_Record::SetData(char *data, size_t size) {
-    if (pData != NULL) {
-        delete [] pData;
-    }
-    pData = new char[size];
-    memcpy(pData, data, size);
+	if (pData != NULL) {
+		delete [] pData;
+	}
+	pData = new char[size];
+	memcpy(pData, data, size);
 }
 
 RC RM_Record::GetData(char *&pData) const {

@@ -36,30 +36,30 @@ const int PF_PAGE_SIZE = 4096 - sizeof(int);
 // PF_PageHandle: PF page interface
 //
 class PF_PageHandle {
-   friend class PF_FileHandle;
+	friend class PF_FileHandle;
 public:
-   PF_PageHandle  ();                            // Default constructor
-   ~PF_PageHandle ();                            // Destructor
+	PF_PageHandle  ();                            // Default constructor
+	~PF_PageHandle ();                            // Destructor
 
-   // Copy constructor
-   PF_PageHandle  (const PF_PageHandle &pageHandle);
-   // Overloaded =
-   PF_PageHandle& operator=(const PF_PageHandle &pageHandle);
+	// Copy constructor
+	PF_PageHandle  (const PF_PageHandle &pageHandle);
+	// Overloaded =
+	PF_PageHandle& operator=(const PF_PageHandle &pageHandle);
 
-   RC GetData     (char *&pData) const;           // Set pData to point to
-                                                  // the page contents
-   RC GetPageNum  (PageNum &pageNum) const;       // Return the page number
+	RC GetData     (char *&pData) const;           // Set pData to point to
+																  // the page contents
+	RC GetPageNum  (PageNum &pageNum) const;       // Return the page number
 private:
-   int  pageNum;                                  // page number
-   char *pPageData;                               // pointer to page data
+	int  pageNum;                                  // page number
+	char *pPageData;                               // pointer to page data
 };
 
 //
 // PF_FileHdr: Header structure for files
 //
 struct PF_FileHdr {
-   int firstFree;     // first free page in the linked list
-   int numPages;      // # of pages in the file
+	int firstFree;     // first free page in the linked list
+	int numPages;      // # of pages in the file
 };
 
 //
@@ -68,50 +68,50 @@ struct PF_FileHdr {
 class PF_BufferMgr;
 
 class PF_FileHandle {
-   friend class PF_Manager;
+	friend class PF_Manager;
 public:
-   PF_FileHandle  ();                            // Default constructor
-   ~PF_FileHandle ();                            // Destructor
+	PF_FileHandle  ();                            // Default constructor
+	~PF_FileHandle ();                            // Destructor
 
-   // Copy constructor
-   PF_FileHandle  (const PF_FileHandle &fileHandle);
+	// Copy constructor
+	PF_FileHandle  (const PF_FileHandle &fileHandle);
 
-   // Overload =
-   PF_FileHandle& operator=(const PF_FileHandle &fileHandle);
+	// Overload =
+	PF_FileHandle& operator=(const PF_FileHandle &fileHandle);
 
-   // Get the first page
-   RC GetFirstPage(PF_PageHandle &pageHandle) const;
-   // Get the next page after current
-   RC GetNextPage (PageNum current, PF_PageHandle &pageHandle) const;
-   // Get a specific page
-   RC GetThisPage (PageNum pageNum, PF_PageHandle &pageHandle) const;
-   // Get the last page
-   RC GetLastPage(PF_PageHandle &pageHandle) const;
-   // Get the prev page after current
-   RC GetPrevPage (PageNum current, PF_PageHandle &pageHandle) const;
+	// Get the first page
+	RC GetFirstPage(PF_PageHandle &pageHandle) const;
+	// Get the next page after current
+	RC GetNextPage (PageNum current, PF_PageHandle &pageHandle) const;
+	// Get a specific page
+	RC GetThisPage (PageNum pageNum, PF_PageHandle &pageHandle) const;
+	// Get the last page
+	RC GetLastPage(PF_PageHandle &pageHandle) const;
+	// Get the prev page after current
+	RC GetPrevPage (PageNum current, PF_PageHandle &pageHandle) const;
 
-   RC AllocatePage(PF_PageHandle &pageHandle);    // Allocate a new page
-   RC DisposePage (PageNum pageNum);              // Dispose of a page
-   RC MarkDirty   (PageNum pageNum) const;        // Mark page as dirty
-   RC UnpinPage   (PageNum pageNum) const;        // Unpin the page
+	RC AllocatePage(PF_PageHandle &pageHandle);    // Allocate a new page
+	RC DisposePage (PageNum pageNum);              // Dispose of a page
+	RC MarkDirty   (PageNum pageNum) const;        // Mark page as dirty
+	RC UnpinPage   (PageNum pageNum) const;        // Unpin the page
 
-   // Flush pages from buffer pool.  Will write dirty pages to disk.
-   RC FlushPages  () const;
+	// Flush pages from buffer pool.  Will write dirty pages to disk.
+	RC FlushPages  () const;
 
-   // Force a page or pages to disk (but do not remove from the buffer pool)
-   RC ForcePages  (PageNum pageNum=ALL_PAGES) const;
+	// Force a page or pages to disk (but do not remove from the buffer pool)
+	RC ForcePages  (PageNum pageNum=ALL_PAGES) const;
 
 private:
 
-   // IsValidPageNum will return TRUE if page number is valid and FALSE
-   // otherwise
-   int IsValidPageNum (PageNum pageNum) const;
+	// IsValidPageNum will return TRUE if page number is valid and FALSE
+	// otherwise
+	int IsValidPageNum (PageNum pageNum) const;
 
-   PF_BufferMgr *pBufferMgr;                      // pointer to buffer manager
-   PF_FileHdr hdr;                                // file header
-   int bFileOpen;                                 // file open flag
-   int bHdrChanged;                               // dirty flag for file hdr
-   int unixfd;                                    // OS file descriptor
+	PF_BufferMgr *pBufferMgr;                      // pointer to buffer manager
+	PF_FileHdr hdr;                                // file header
+	int bFileOpen;                                 // file open flag
+	int bHdrChanged;                               // dirty flag for file hdr
+	int unixfd;                                    // OS file descriptor
 };
 
 //
@@ -119,43 +119,43 @@ private:
 //
 class PF_Manager {
 public:
-   PF_Manager    ();                              // Constructor
-   ~PF_Manager   ();                              // Destructor
-   RC CreateFile    (const char *fileName);       // Create a new file
-   RC DestroyFile   (const char *fileName);       // Delete a file
+	PF_Manager    ();                              // Constructor
+	~PF_Manager   ();                              // Destructor
+	RC CreateFile    (const char *fileName);       // Create a new file
+	RC DestroyFile   (const char *fileName);       // Delete a file
 
-   // Open and close file methods
-   RC OpenFile      (const char *fileName, PF_FileHandle &fileHandle);
-   RC CloseFile     (PF_FileHandle &fileHandle);
+	// Open and close file methods
+	RC OpenFile      (const char *fileName, PF_FileHandle &fileHandle);
+	RC CloseFile     (PF_FileHandle &fileHandle);
 
-   // Three methods that manipulate the buffer manager.  The calls are
-   // forwarded to the PF_BufferMgr instance and are called by parse.y
-   // when the user types in a system command.
-   RC ClearBuffer   ();
-   RC PrintBuffer   ();
-   RC ResizeBuffer  (int iNewSize);
+	// Three methods that manipulate the buffer manager.  The calls are
+	// forwarded to the PF_BufferMgr instance and are called by parse.y
+	// when the user types in a system command.
+	RC ClearBuffer   ();
+	RC PrintBuffer   ();
+	RC ResizeBuffer  (int iNewSize);
 
-   // Three Methods for manipulating raw memory buffers.  These memory
-   // locations are handled by the buffer manager, but are not
-   // associated with a particular file.  These should be used if you
-   // want to create structures in memory that are bounded by the size
-   // of the buffer pool.
-   //
-   // Note: If you lose the pointer to the buffer that is passed back
-   // from AllocateBlock or do not call DisposeBlock with that pointer
-   // then the internal memory will always remain "pinned" in the buffer
-   // pool and you will have lost a slot in the buffer pool.
+	// Three Methods for manipulating raw memory buffers.  These memory
+	// locations are handled by the buffer manager, but are not
+	// associated with a particular file.  These should be used if you
+	// want to create structures in memory that are bounded by the size
+	// of the buffer pool.
+	//
+	// Note: If you lose the pointer to the buffer that is passed back
+	// from AllocateBlock or do not call DisposeBlock with that pointer
+	// then the internal memory will always remain "pinned" in the buffer
+	// pool and you will have lost a slot in the buffer pool.
 
-   // Return the size of the block that can be allocated.
-   RC GetBlockSize  (int &length) const;
+	// Return the size of the block that can be allocated.
+	RC GetBlockSize  (int &length) const;
 
-   // Allocate a memory chunk that lives in buffer manager
-   RC AllocateBlock (char *&buffer);
-   // Dispose of a memory chunk managed by the buffer manager.
-   RC DisposeBlock  (char *buffer);
+	// Allocate a memory chunk that lives in buffer manager
+	RC AllocateBlock (char *&buffer);
+	// Dispose of a memory chunk managed by the buffer manager.
+	RC DisposeBlock  (char *buffer);
 
 private:
-   PF_BufferMgr *pBufferMgr;                      // page-buffer manager
+	PF_BufferMgr *pBufferMgr;                      // page-buffer manager
 };
 
 //

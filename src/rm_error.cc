@@ -13,18 +13,18 @@ using namespace std;
 // Error table
 //
 static char *RM_WarnMsg[] = {
-		(char *)"file is not opened",
-		(char *)"SlotNum is out of range",
-		(char *)"record is already deleted",
-		(char *)"no more records in scan",
-		(char *)"Record is not properly initialized",
-		(char *)"RID is not properly initialized",
-		(char *)"scan is not opened",
-		(char *)"last opened scan is not closed"
+	(char *)"file is not opened",
+	(char *)"SlotNum is out of range",
+	(char *)"record is already deleted",
+	(char *)"no more records in scan",
+	(char *)"Record is not properly initialized",
+	(char *)"RID is not properly initialized",
+	(char *)"scan is not opened",
+	(char *)"last opened scan is not closed"
 };
 
 static char *RM_ErrorMsg[] = {
-		(char *)"recordSize is too large for current pagefile system"
+	(char *)"recordSize is too large for current pagefile system"
 };
 
 void RM_PrintError(RC rc) {

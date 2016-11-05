@@ -26,10 +26,10 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 		return RM_SLOTNUM_OUT_OF_RANGE;
 	TRY(pfHandle.GetThisPage(pageNum, pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	rec.rid = rid;
-    rec.SetData(data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
-	
+	rec.SetData(data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
+
 	TRY(pfHandle.UnpinPage(pageNum));
 	return 0;
 }
@@ -40,7 +40,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	SlotNum slotNum;
 	PF_PageHandle pageHandle;
 	char *data, *destination;
-	
+
 	if (firstFreePage != kLastFreePage) {
 		TRY(pfHandle.GetThisPage(firstFreePage, pageHandle));
 		TRY(pageHandle.GetPageNum(pageNum));
@@ -71,7 +71,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	++((RM_PageHeader *)data)->allocatedRecords;
 	setBitMap(((RM_PageHeader *)data)->occupiedBitMap, slotNum, true);
 	rid = RID(pageNum, slotNum);
-	
+
 	TRY(pfHandle.MarkDirty(pageNum));
 	TRY(pfHandle.UnpinPage(pageNum));
 	return 0;
@@ -89,7 +89,7 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 		return RM_SLOTNUM_OUT_OF_RANGE;
 	TRY(pfHandle.GetThisPage(pageNum, pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	if (getBitMap(((RM_PageHeader *)data)->occupiedBitMap, slotNum) == 0)
 		return RM_RECORD_DELETED;
 	setBitMap(((RM_PageHeader *)data)->occupiedBitMap, slotNum, false);
@@ -100,7 +100,7 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 		isHeaderDirty = true;
 	}
 	((RM_PageHeader *)data)->firstFreeRecord = (short)slotNum;
-	
+
 	TRY(pfHandle.MarkDirty(pageNum));
 	TRY(pfHandle.UnpinPage(pageNum));
 	return 0;
@@ -118,9 +118,9 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 		return RM_SLOTNUM_OUT_OF_RANGE;
 	TRY(pfHandle.GetThisPage(pageNum, pageHandle));
 	TRY(pageHandle.GetData(data));
-	
+
 	memcpy(data, rec.pData, (size_t)recordSize);
-	
+
 	TRY(pfHandle.MarkDirty(pageNum));
 	TRY(pfHandle.UnpinPage(pageNum));
 	return 0;

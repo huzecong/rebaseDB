@@ -34,10 +34,10 @@ const int PF_HASH_TBL_SIZE = 20;   // Size of hash table
 // PF_PageHdr: Header structure for pages
 //
 struct PF_PageHdr {
-    int nextFree;       // nextFree can be any of these values:
-                        //  - the number of the next free page
-                        //  - PF_PAGE_LIST_END if this is last free page
-                        //  - PF_PAGE_USED if the page is not free
+	int nextFree;       // nextFree can be any of these values:
+	                    //  - the number of the next free page
+	                    //  - PF_PAGE_LIST_END if this is last free page
+	                    //  - PF_PAGE_USED if the page is not free
 };
 
 // Justify the file header to the length of one page

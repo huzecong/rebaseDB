@@ -15,7 +15,7 @@ RM_FileScan::~RM_FileScan() {}
 
 RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int attrLength, int attrOffset, CompOp compOp, void *value, ClientHint pinHint) {
 	if (scanOpened) return RM_SCAN_NOT_CLOSED;
-	
+
 	this->fileHandle = &fileHandle;
 	this->attrType = attrType;
 	this->attrLength = attrLength;
@@ -37,7 +37,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
 				break;
 		}
 	}
-	
+
 	char *data;
 	PF_PageHandle pageHandle;
 	scanOpened = true;
@@ -47,13 +47,13 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
 	currentPageNum = 1;
 	currentSlotNum = 0;
 	TRY(fileHandle.pfHandle.UnpinPage(0));
-	
+
 	return 0;
 }
 
 RC RM_FileScan::GetNextRec(RM_Record &rec) {
 	if (!scanOpened) return RM_SCAN_NOT_OPENED;
-	
+
 	char *data;
 	PF_PageHandle pageHandle;
 	bool found = false;
@@ -78,17 +78,17 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
 		TRY(pageHandle.GetPageNum(currentPageNum));
 		currentSlotNum = 0;
 	}
-	
+
 	rec.rid = RID(currentPageNum, currentSlotNum);
-    rec.SetData(data + fileHandle->pageHeaderSize + recordSize * currentSlotNum,
-	       (size_t)recordSize);
+	rec.SetData(data + fileHandle->pageHeaderSize + recordSize * currentSlotNum,
+			(size_t)recordSize);
 	++currentSlotNum;
 	return 0;
 }
 
 RC RM_FileScan::CloseScan() {
 	if (!scanOpened) return RM_SCAN_NOT_OPENED;
-    scanOpened = false;
+	scanOpened = false;
 	if (attrType == STRING && value.stringVal != NULL)
 		delete[] value.stringVal;
 	return 0;

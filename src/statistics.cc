@@ -43,8 +43,8 @@ const char *PF_FLUSHPAGES = "FLUSHPAGES";
 //
 Statistic::Statistic()
 {
-   psKey = NULL;
-   iValue = 0;
+	psKey = NULL;
+	iValue = 0;
 }
 
 
@@ -55,10 +55,10 @@ Statistic::Statistic()
 //
 Statistic::Statistic(const char *psKey_)
 {
-   psKey = new char[strlen(psKey_) + 1];
-   strcpy (psKey, psKey_);
+	psKey = new char[strlen(psKey_) + 1];
+	strcpy (psKey, psKey_);
 
-   iValue = 0;
+	iValue = 0;
 }
 
 //
@@ -66,10 +66,10 @@ Statistic::Statistic(const char *psKey_)
 //
 Statistic::Statistic(const Statistic &stat)
 {
-    psKey = new char[strlen(stat.psKey)+1];
-    strcpy (psKey, stat.psKey);
+	 psKey = new char[strlen(stat.psKey)+1];
+	 strcpy (psKey, stat.psKey);
 
-    iValue = stat.iValue;
+	 iValue = stat.iValue;
 }
 
 //
@@ -77,16 +77,16 @@ Statistic::Statistic(const Statistic &stat)
 //
 Statistic& Statistic::operator=(const Statistic &stat)
 {
-   if (this==&stat)
-      return *this;
+	if (this==&stat)
+		return *this;
 
-   delete [] psKey;
-   psKey = new char[strlen(stat.psKey)+1];
-   strcpy (psKey, stat.psKey);
+	delete [] psKey;
+	psKey = new char[strlen(stat.psKey)+1];
+	strcpy (psKey, stat.psKey);
 
-   iValue = stat.iValue;
+	iValue = stat.iValue;
 
-   return *this;
+	return *this;
 }
 
 //
@@ -94,12 +94,12 @@ Statistic& Statistic::operator=(const Statistic &stat)
 //
 Statistic::~Statistic()
 {
-   delete [] psKey;
+	delete [] psKey;
 }
 
 Boolean Statistic::operator==(const char *psKey_) const
 {
-   return (strcmp(psKey_, psKey)==0);
+	return (strcmp(psKey_, psKey)==0);
 }
 
 // --------------------------------------------------------------
@@ -122,60 +122,60 @@ Boolean Statistic::operator==(const char *psKey_) const
 // time) then it will be initialized to 0 - the default value.
 //
 RC StatisticsMgr::Register (const char *psKey, const Stat_Operation op,
-      const int *const piValue)
+		const int *const piValue)
 {
-   int i, iCount;
-   Statistic *pStat = NULL;
+	int i, iCount;
+	Statistic *pStat = NULL;
 
-   if (psKey==NULL || (op != STAT_ADDONE && piValue == NULL))
-      return STAT_INVALID_ARGS;
+	if (psKey==NULL || (op != STAT_ADDONE && piValue == NULL))
+		return STAT_INVALID_ARGS;
 
-   iCount = llStats.GetLength();
+	iCount = llStats.GetLength();
 
-   for (i=0; i < iCount; i++) {
-      pStat = llStats[i];
-      if (*pStat == psKey)
-         break;
-   }
+	for (i=0; i < iCount; i++) {
+		pStat = llStats[i];
+		if (*pStat == psKey)
+			break;
+	}
 
-   // Check to see if we found the Stat
-   if (i==iCount)
-      // We haven't found it so create a new statistic
-      // with the key psKey and initial value of 0.
-      pStat = new Statistic( psKey );
+	// Check to see if we found the Stat
+	if (i==iCount)
+		// We haven't found it so create a new statistic
+		// with the key psKey and initial value of 0.
+		pStat = new Statistic( psKey );
 
-   // Now perform the operation over the statistic
-   switch (op) {
-      case STAT_ADDONE:
-         pStat->iValue++;
-         break;
-      case STAT_ADDVALUE:
-         pStat->iValue += *piValue;
-         break;
-      case STAT_SETVALUE:
-         pStat->iValue = *piValue;
-         break;
-      case STAT_MULTVALUE:
-         pStat->iValue *= *piValue;
-         break;
-      case STAT_DIVVALUE:
-         pStat->iValue = (int) (pStat->iValue/(*piValue));
-         break;
-      case STAT_SUBVALUE:
-         pStat->iValue -= *piValue;
-         break;
-   };
+	// Now perform the operation over the statistic
+	switch (op) {
+		case STAT_ADDONE:
+			pStat->iValue++;
+			break;
+		case STAT_ADDVALUE:
+			pStat->iValue += *piValue;
+			break;
+		case STAT_SETVALUE:
+			pStat->iValue = *piValue;
+			break;
+		case STAT_MULTVALUE:
+			pStat->iValue *= *piValue;
+			break;
+		case STAT_DIVVALUE:
+			pStat->iValue = (int) (pStat->iValue/(*piValue));
+			break;
+		case STAT_SUBVALUE:
+			pStat->iValue -= *piValue;
+			break;
+	};
 
-   // Finally, if the statistic wasn't in the original list then add it to
-   // the list.
-   //  JASON:: Confirm that it makes a copy of the object in line 229 of
-   //  linkedlist.h.
-   if (i==iCount) {
-      llStats.Append(*pStat);
-      delete pStat;
-   }
+	// Finally, if the statistic wasn't in the original list then add it to
+	// the list.
+	//  JASON:: Confirm that it makes a copy of the object in line 229 of
+	//  linkedlist.h.
+	if (i==iCount) {
+		llStats.Append(*pStat);
+		delete pStat;
+	}
 
-   return 0;
+	return 0;
 }
 
 //
@@ -184,19 +184,19 @@ RC StatisticsMgr::Register (const char *psKey, const Stat_Operation op,
 // Print out the information pertaining to a specific statistic
 RC StatisticsMgr::Print(const char *psKey)
 {
-   if (psKey==NULL)
-      return STAT_INVALID_ARGS;
+	if (psKey==NULL)
+		return STAT_INVALID_ARGS;
 
-   int *iValue = Get(psKey);
+	int *iValue = Get(psKey);
 
-   if (iValue)
-      cout << psKey << "::" << *iValue << "\n";
-   else
-      return STAT_UNKNOWN_KEY;
+	if (iValue)
+		cout << psKey << "::" << *iValue << "\n";
+	else
+		return STAT_UNKNOWN_KEY;
 
-   delete iValue;
+	delete iValue;
 
-   return 0;
+	return 0;
 }
 
 
@@ -210,22 +210,22 @@ RC StatisticsMgr::Print(const char *psKey)
 //
 int *StatisticsMgr::Get(const char *psKey)
 {
-   int i, iCount;
-   Statistic *pStat = NULL;
+	int i, iCount;
+	Statistic *pStat = NULL;
 
-   iCount = llStats.GetLength();
+	iCount = llStats.GetLength();
 
-   for (i=0; i < iCount; i++) {
-      pStat = llStats[i];
-      if (*pStat == psKey)
-         break;
-   }
+	for (i=0; i < iCount; i++) {
+		pStat = llStats[i];
+		if (*pStat == psKey)
+			break;
+	}
 
-   // Check to see if we found the Stat
-   if (i==iCount)
-      return NULL;
+	// Check to see if we found the Stat
+	if (i==iCount)
+		return NULL;
 
-   return new int(pStat->iValue);
+	return new int(pStat->iValue);
 }
 
 //
@@ -235,15 +235,15 @@ int *StatisticsMgr::Get(const char *psKey)
 //
 void StatisticsMgr::Print()
 {
-   int i, iCount;
-   Statistic *pStat = NULL;
+	int i, iCount;
+	Statistic *pStat = NULL;
 
-   iCount = llStats.GetLength();
+	iCount = llStats.GetLength();
 
-   for (i=0; i < iCount; i++) {
-      pStat = llStats[i];
-      cout << pStat->psKey << "::" << pStat->iValue << "\n";
-   }
+	for (i=0; i < iCount; i++) {
+		pStat = llStats[i];
+		cout << pStat->psKey << "::" << pStat->iValue << "\n";
+	}
 }
 
 //
@@ -254,27 +254,27 @@ void StatisticsMgr::Print()
 //
 RC StatisticsMgr::Reset(const char *psKey)
 {
-   int i, iCount;
-   Statistic *pStat = NULL;
+	int i, iCount;
+	Statistic *pStat = NULL;
 
-   if (psKey==NULL)
-      return STAT_INVALID_ARGS;
+	if (psKey==NULL)
+		return STAT_INVALID_ARGS;
 
-   iCount = llStats.GetLength();
+	iCount = llStats.GetLength();
 
-   for (i=0; i < iCount; i++) {
-      pStat = llStats[i];
-      if (*pStat == psKey)
-         break;
-   }
+	for (i=0; i < iCount; i++) {
+		pStat = llStats[i];
+		if (*pStat == psKey)
+			break;
+	}
 
-   // If we found the statistic then remove it from the list
-   if (i!=iCount)
-      llStats.Delete(i);
-   else
-      return STAT_UNKNOWN_KEY;
+	// If we found the statistic then remove it from the list
+	if (i!=iCount)
+		llStats.Delete(i);
+	else
+		return STAT_UNKNOWN_KEY;
 
-   return 0;
+	return 0;
 }
 
 //
@@ -285,6 +285,6 @@ RC StatisticsMgr::Reset(const char *psKey)
 //
 void StatisticsMgr::Reset()
 {
-   llStats.Erase();
+	llStats.Erase();
 }
 

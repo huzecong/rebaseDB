@@ -25,8 +25,8 @@
 //
 PF_PageHandle::PF_PageHandle()
 {
-  pageNum = INVALID_PAGE;
-  pPageData = NULL;
+	pageNum = INVALID_PAGE;
+	pPageData = NULL;
 }
 
 //
@@ -38,7 +38,7 @@ PF_PageHandle::PF_PageHandle()
 //
 PF_PageHandle::~PF_PageHandle()
 {
-  // Don't need to do anything
+	// Don't need to do anything
 }
 
 //
@@ -51,10 +51,10 @@ PF_PageHandle::~PF_PageHandle()
 //
 PF_PageHandle::PF_PageHandle(const PF_PageHandle &pageHandle)
 {
-  // Just copy the local variables since there is no local memory
-  // allocation involved
-  this->pageNum = pageHandle.pageNum;
-  this->pPageData = pageHandle.pPageData;
+	// Just copy the local variables since there is no local memory
+	// allocation involved
+	this->pageNum = pageHandle.pageNum;
+	this->pPageData = pageHandle.pPageData;
 }
 
 //
@@ -68,17 +68,17 @@ PF_PageHandle::PF_PageHandle(const PF_PageHandle &pageHandle)
 //
 PF_PageHandle& PF_PageHandle::operator= (const PF_PageHandle &pageHandle)
 {
-  // Check for self-assignment
-  if (this != &pageHandle) {
+	// Check for self-assignment
+	if (this != &pageHandle) {
 
-    // Just copy the pointers since there is no local memory
-    // allocation involved
-    this->pageNum = pageHandle.pageNum;
-    this->pPageData = pageHandle.pPageData;
-  }
+		// Just copy the pointers since there is no local memory
+		// allocation involved
+		this->pageNum = pageHandle.pageNum;
+		this->pPageData = pageHandle.pPageData;
+	}
 
-  // Return a reference to this
-  return (*this);
+	// Return a reference to this
+	return (*this);
 }
 
 //
@@ -91,15 +91,15 @@ PF_PageHandle& PF_PageHandle::operator= (const PF_PageHandle &pageHandle)
 //
 RC PF_PageHandle::GetData(char *&pData) const
 {
-  // Page must refer to a pinned page
-  if (pPageData == NULL)
-    return (PF_PAGEUNPINNED);
+	// Page must refer to a pinned page
+	if (pPageData == NULL)
+		return (PF_PAGEUNPINNED);
 
-  // Set pData to point to page contents (after PF header)
-  pData = pPageData;
+	// Set pData to point to page contents (after PF header)
+	pData = pPageData;
 
-  // Return ok
-  return (0);
+	// Return ok
+	return (0);
 }
 
 //
@@ -113,13 +113,13 @@ RC PF_PageHandle::GetData(char *&pData) const
 RC PF_PageHandle::GetPageNum(PageNum &_pageNum) const
 {
 
-  // Page must refer to a pinned page
-  if (pPageData == NULL)
-    return (PF_PAGEUNPINNED);
+	// Page must refer to a pinned page
+	if (pPageData == NULL)
+		return (PF_PAGEUNPINNED);
 
-  // Set page number
-  _pageNum = this->pageNum;
+	// Set page number
+	_pageNum = this->pageNum;
 
-  // Return ok
-  return (0);
+	// Return ok
+	return (0);
 }

@@ -51,72 +51,72 @@ const int STAT_BASE = 9000;
 // A single statistic will be tracked by a Statistic class
 class Statistic {
 public:
-    Statistic();
-    ~Statistic();
-    Statistic(const char *psName);
+	Statistic();
+	~Statistic();
+	Statistic(const char *psName);
 
-    // Copy constructor
-    Statistic(const Statistic &stat);
+	// Copy constructor
+	Statistic(const Statistic &stat);
 
-    // Equality constructor
-    Statistic& operator=(const Statistic &stat);
+	// Equality constructor
+	Statistic& operator=(const Statistic &stat);
 
-    // Check for equality between a Statistic and a name based upon the
-    // names given to the current statistic.
-    Boolean operator==(const char *psName_) const;
+	// Check for equality between a Statistic and a name based upon the
+	// names given to the current statistic.
+	Boolean operator==(const char *psName_) const;
 
-    // The name or key given to the statistic that this structure is
-    // tracking
-    char *psKey;
+	// The name or key given to the statistic that this structure is
+	// tracking
+	char *psKey;
 
-    // Currently, I have only allowed the statistic to track integer values.
-    // Initial value will be 0.
-    int iValue;
+	// Currently, I have only allowed the statistic to track integer values.
+	// Initial value will be 0.
+	int iValue;
 };
 
 // These are the different operations that a single statistic can undergo
 // duing a call to StatisticsMgr::Register.
 enum Stat_Operation {
-    STAT_ADDONE,
-    STAT_ADDVALUE,
-    STAT_SETVALUE,
-    STAT_MULTVALUE,
-    STAT_DIVVALUE,
-    STAT_SUBVALUE
+	STAT_ADDONE,
+	STAT_ADDVALUE,
+	STAT_SETVALUE,
+	STAT_MULTVALUE,
+	STAT_DIVVALUE,
+	STAT_SUBVALUE
 };
 
 // The StatisticsMgr will track a group of statistics
 class StatisticsMgr {
 
 public:
-    StatisticsMgr() {};
-    ~StatisticsMgr() {};
+	StatisticsMgr() {};
+	~StatisticsMgr() {};
 
-    // Add a new statistic or register a change to an existing statistic.
-    // The piValue for can be NULL, except for those operations that require
-    // it.  When adding the default value is 0 with the Stat_Operation being
-    // performed over the initial value.
-    RC Register(const char *psKey, const Stat_Operation op,
-                const int *const piValue = NULL);
+	// Add a new statistic or register a change to an existing statistic.
+	// The piValue for can be NULL, except for those operations that require
+	// it.  When adding the default value is 0 with the Stat_Operation being
+	// performed over the initial value.
+	RC Register(const char *psKey, const Stat_Operation op,
+	            const int *const piValue = NULL);
 
-    // Get will return the value associated with a particular statistic.
-    // Caller is responsible for deleting the memory returned.
-    int *Get(const char *psKey);
+	// Get will return the value associated with a particular statistic.
+	// Caller is responsible for deleting the memory returned.
+	int *Get(const char *psKey);
 
-    // Print out a specific statistic
-    RC Print(const char *psKey);
+	// Print out a specific statistic
+	RC Print(const char *psKey);
 
-    // Print out all the statistics tracked
-    void Print();
+	// Print out all the statistics tracked
+	void Print();
 
-    // Reset a specific statistic
-    RC Reset(const char *psKey);
+	// Reset a specific statistic
+	RC Reset(const char *psKey);
 
-    // Reset all of the statistics
-    void Reset();
+	// Reset all of the statistics
+	void Reset();
 
 private:
-    LinkList<Statistic> llStats;
+	LinkList<Statistic> llStats;
 };
 
 //

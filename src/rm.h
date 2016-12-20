@@ -21,7 +21,6 @@
 #include "redbase.h"
 #include "rm_rid.h"
 #include "pf.h"
-#include "rm_internal.h"
 
 #include <cstring>
 
@@ -29,17 +28,9 @@
 // RM_Record: RM Record interface
 //
 class RM_Record {
-	friend class RM_FileHandle;
-	friend class RM_FileScan;
-
-	char *pData;
-	RID rid;
 public:
 	RM_Record ();
-	RM_Record(const RM_Record&) = delete;
 	~RM_Record();
-
-	RM_Record& operator=(const RM_Record&) = delete;
 
 	void SetData(char *data, size_t size);
 	void UpdateData(char *data, size_t size);
@@ -56,15 +47,6 @@ public:
 // RM_FileHandle: RM File interface
 //
 class RM_FileHandle {
-	friend class RM_Manager;
-	friend class RM_FileScan;
-
-	PF_FileHandle pfHandle;
-	short recordSize;
-	short recordsPerPage;
-	int firstFreePage;
-	short pageHeaderSize;
-	bool isHeaderDirty;
 public:
 	RM_FileHandle ();
 	~RM_FileHandle();
@@ -86,23 +68,6 @@ public:
 // RM_FileScan: condition-based scan of records in the file
 //
 class RM_FileScan {
-	const RM_FileHandle *fileHandle;
-	AttrType attrType;
-	int attrLength;
-	int attrOffset;
-	CompOp compOp;
-	union {
-		int intVal;
-		float floatVal;
-		char *stringVal;
-	} value;
-
-	bool scanOpened;
-	PageNum currentPageNum;
-	SlotNum currentSlotNum;
-	short recordSize;
-
-	bool checkSatisfy(char *data);
 public:
 	RM_FileScan  ();
 	~RM_FileScan ();
@@ -122,7 +87,6 @@ public:
 // RM_Manager: provides RM file management
 //
 class RM_Manager {
-	PF_Manager *pfm;
 public:
 	RM_Manager    (PF_Manager &pfm);
 	~RM_Manager   ();
@@ -139,17 +103,10 @@ public:
 //
 void RM_PrintError(RC rc);
 
-#define RM_FILE_NOT_OPENED      (START_RM_WARN + 0) // file is not opened
-#define RM_SLOTNUM_OUT_OF_RANGE (START_RM_WARN + 1) // SlotNum < 0 || >= records/page
-#define RM_RECORD_DELETED       (START_RM_WARN + 2) // record already deleted
-#define RM_EOF                  (START_RM_WARN + 3)
-#define RM_UNINITIALIZED_RECORD (START_RM_WARN + 4)
-#define RM_UNINITIALIZED_RID	(START_RM_WARN + 5)
-#define RM_SCAN_NOT_OPENED      (START_RM_WARN + 6)
-#define RM_SCAN_NOT_CLOSED      (START_RM_WARN + 7)
-#define RM_LASTWARN             RM_SCAN_NOT_CLOSED
+#define RM_SOMEWARN      (START_RM_WARN + 0) // file is not opened
+#define RM_LASTWARN             RM_SOMEWARN
 
-#define RM_RECORDSIZE_TOO_LARGE (START_RM_ERR - 0) // record size larger than PF_PAGE_SIZE
-#define RM_LASTERROR            RM_RECORDSIZE_TOO_LARGE
+#define RM_SOMEERR       (START_RM_ERR - 0) // record size larger than PF_PAGE_SIZE
+#define RM_LASTERROR            RM_SOMEERR
 
 #endif

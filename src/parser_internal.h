@@ -222,12 +222,14 @@ NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);
 
-void reset_scanner(void);
-void reset_charptr(void);
-void new_query(void);
-RC   interp(NODE *n);
-int  yylex(void);
-int  yyparse(void);
+#ifdef __cplusplus
+extern "C" void reset_scanner(void);
+extern "C" void reset_charptr(void);
+extern "C" void new_query(void);
+extern "C" RC   interp(NODE *n);
+extern "C" int  yylex(void);
+extern "C" int  yyparse(void);
+#endif
 
 #endif
 

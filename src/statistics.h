@@ -75,7 +75,7 @@ public:
 };
 
 // These are the different operations that a single statistic can undergo
-// duing a call to StatisticsMgr::Register.
+// during a call to StatisticsMgr::Register.
 enum Stat_Operation {
 	STAT_ADDONE,
 	STAT_ADDVALUE,

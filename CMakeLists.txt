@@ -10,8 +10,8 @@ find_package(BISON)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-FLEX_TARGET(Lexer src/scan.l ${CMAKE_CURRENT_BINARY_DIR}/lex.yy.cc)
 BISON_TARGET(Parser src/parse.y ${CMAKE_CURRENT_BINARY_DIR}/y.tab.cc COMPILE_FLAGS -vd)
+FLEX_TARGET(Lexer src/scan.l ${CMAKE_CURRENT_BINARY_DIR}/lex.yy.c)
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 file(GLOB C_SOURCE_FILES
@@ -26,8 +26,8 @@ file(GLOB CPP_SOURCE_FILES
 set(SOURCE_FILES
         ${C_SOURCE_FILES}
         ${CPP_SOURCE_FILES}
-        ${FLEX_Lexer_OUTPUTS}
         ${BISON_Parser_OUTPUTS}
+        ${FLEX_Lexer_OUTPUTS}
         )
 
 add_executable(redbase ${SOURCE_FILES})

@@ -35,7 +35,7 @@ typedef struct {
  */
 typedef struct {
 	char *attrName;     /* attribute name       */
-	AttrType valType;   /* type of value        */
+	enum AttrType valType;   /* type of value        */
 	int valLength;      /* length if type = STRING */
 	void *value;        /* value for attribute  */
 } ATTR_VAL;
@@ -157,7 +157,7 @@ typedef struct node {
 		/* condition node */
 		struct {
 			struct node *lhsRelattr;
-			CompOp op;
+			enum CompOp op;
 			struct node *rhsRelattr;
 			struct node *rhsValue;
 		} CONDITION;
@@ -176,7 +176,7 @@ typedef struct node {
 
 		/* <value, type> pair */
 		struct {
-			AttrType type;
+			enum AttrType type;
 			int  ival;
 			real rval;
 			char *sval;
@@ -214,20 +214,22 @@ NODE *delete_node(char *relname, NODE *conditionlist);
 NODE *update_node(char *relname, NODE *relattr, NODE *value,
                   NODE *conditionlist);
 NODE *relattr_node(char *relname, char *attrname);
-NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue);
-NODE *value_node(AttrType type, void *value);
+NODE *condition_node(NODE *lhsRelattr, enum CompOp op, NODE *rhsRelattrOrValue);
+NODE *value_node(enum AttrType type, void *value);
 NODE *relattr_or_value_node(NODE *relattr, NODE *value);
 NODE *attrtype_node(char *attrname, char *type);
 NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);
 
-void reset_scanner(void);
-void reset_charptr(void);
-void new_query(void);
-RC   interp(NODE *n);
-int  yylex(void);
-int  yyparse(void);
+#ifdef __cplusplus
+extern "C" void reset_scanner(void);
+extern "C" void reset_charptr(void);
+extern "C" void new_query(void);
+extern "C" RC   interp(NODE *n);
+extern "C" int  yylex(void);
+extern "C" int  yyparse(void);
+#endif
 
 #endif
 

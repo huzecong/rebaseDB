@@ -70,7 +70,7 @@ QL_Manager *pQlm;          // QL component manager
 
 %union{
     int ival;
-    CompOp cval;
+    enum CompOp cval;
     float rval;
     char *sval;
     NODE *n;

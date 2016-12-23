@@ -32,8 +32,10 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
 				this->value.floatVal = *(float *)value;
 				break;
 			case STRING:
-				this->value.stringVal = new char[attrLength];
-				memcpy(this->value.stringVal, value, (size_t)attrLength);
+				this->value.stringVal = new char[attrLength + 1];
+				memcpy(this->value.stringVal, value, attrLength);
+				// strncpy(this->value.stringVal, (char*)value, attrLength);
+				this->value.stringVal[attrLength] = '\0';
 				break;
 		}
 	}
@@ -140,17 +142,17 @@ bool RM_FileScan::checkSatisfy(char *data) {
 				case NO_OP:
 					return true;
 				case EQ_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) == 0;
+					return strcmp(curVal, value.stringVal) == 0;
 				case NE_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) != 0;
+					return strcmp(curVal, value.stringVal) != 0;
 				case LT_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) < 0;
+					return strcmp(curVal, value.stringVal) < 0;
 				case GT_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) > 0;
+					return strcmp(curVal, value.stringVal) > 0;
 				case LE_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) <= 0;
+					return strcmp(curVal, value.stringVal) <= 0;
 				case GE_OP:
-					return strncmp(curVal, value.stringVal, (size_t)attrLength) >= 0;
+					return strcmp(curVal, value.stringVal) >= 0;
 			}
 		}
 	}

@@ -70,7 +70,7 @@ UTILS          = $(UTILS_SOURCES:.cc=)
 TESTS          = $(TESTER_SOURCES:.cpp=)
 EXECUTABLES    = $(UTILS) $(TESTS)
 
-LIBS           = -lparser -lql -lsm -lix -lrm -lpf
+LIBS           = -lparser -lql -lsm -lix -lrm -lpf -lglog -lgflags
 
 #
 # Build targets
@@ -86,26 +86,32 @@ testers: all $(TESTS)
 # Libraries
 #
 $(LIBRARY_PF): $(PF_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_PF) $(PF_OBJECTS)
 	$(RANLIB) $(LIBRARY_PF)
 
 $(LIBRARY_RM): $(RM_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_RM) $(RM_OBJECTS)
 	$(RANLIB) $(LIBRARY_RM)
 
 $(LIBRARY_IX): $(IX_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_IX) $(IX_OBJECTS)
 	$(RANLIB) $(LIBRARY_IX)
 
 $(LIBRARY_SM): $(SM_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_SM) $(SM_OBJECTS)
 	$(RANLIB) $(LIBRARY_SM)
 
 $(LIBRARY_QL): $(QL_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_QL) $(QL_OBJECTS)
 	$(RANLIB) $(LIBRARY_QL)
 
 $(LIBRARY_PARSER): $(PARSER_OBJECTS)
+	$(RM) $@
 	$(AR) $(LIBRARY_PARSER) $(PARSER_OBJECTS)
 	$(RANLIB) $(LIBRARY_PARSER)
 

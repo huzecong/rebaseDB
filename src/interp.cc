@@ -173,7 +173,7 @@ RC interp(NODE *n) {
 
 		/* Make the call to Select */
 		errval = pQlm->Select(nSelAttrs, relAttrs,
-		                      nRelations, relations,
+		                      nRelations, (const char *const *)relations,
 		                      nConditions, conditions);
 		break;
 	}
@@ -260,7 +260,7 @@ RC interp(NODE *n) {
 
 /*
  * mk_attr_infos: converts a list of attribute descriptors (attribute names,
- * types, and lengths) to an array of AttrInfo's so it can be sent to
+ * types, and lengths) to an array of DataAttrInfo's so it can be sent to
  * Create.
  *
  * Returns:

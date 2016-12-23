@@ -48,6 +48,7 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 	return 0;
 }
 
+// must ensure file is not open
 RC RM_Manager::DestroyFile(const char *fileName) {
 	return pfm->DestroyFile(fileName);
 }

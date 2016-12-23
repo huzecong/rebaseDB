@@ -13,12 +13,19 @@ using namespace std;
 //
 // Error table
 //
-const char *SM_WarnMsg[] = {
-
+static const char *SM_WarnMsg[] = {
+		"relation already exists",
+		"relation does not exist",
+		"attribute does not exist for given relation",
+        "index already exists for given attribute",
+        "index does not exist for given attribute",
+        "file to load has incorrect format",
+        "file not found",
 };
 
-const char *SM_ErrorMsg[] = {
-
+static const char *SM_ErrorMsg[] = {
+		"chdir command execution failed",
+        "database catalog file is corrupt",
 };
 
 //
@@ -32,7 +39,7 @@ void SM_PrintError(RC rc) {
 	if (rc >= START_SM_WARN && rc <= SM_LASTWARN)
 		// Print warning
 		cerr << "SM warning: " << SM_WarnMsg[rc - START_SM_WARN] << "\n";
-	// Error codes are negative, so invert everything
+		// Error codes are negative, so invert everything
 	else if ((-rc >= -START_SM_ERR) && -rc <= -SM_LASTERROR) {
 		// Print error
 		cerr << "SM error: " << SM_ErrorMsg[-rc + START_SM_ERR] << "\n";

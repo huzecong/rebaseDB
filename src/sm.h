@@ -16,12 +16,19 @@
 #include <string>
 #include <map>
 #include "parser.h"
+#include "catalog.h"
+#include "printer.h"
 
 //
 // SM_Manager: provides data management
 //
 class SM_Manager {
 	friend class QL_Manager;
+	
+	RM_Manager *rmm;
+	IX_Manager *ixm;
+	
+	RM_FileHandle relcat, attrcat;
 public:
 	SM_Manager    (IX_Manager &ixm_, RM_Manager &rmm_);
 	~SM_Manager   ();                             // Destructor
@@ -49,6 +56,13 @@ public:
 
 	RC Set        (const char *paramName,         // set parameter to
 	               const char *value);            //   value
+	
+	RC GetRelEntry(const char *relName, RelCatEntry *&relEntry);
+	RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry *&attrEntry);
+	RC GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo *&attributes, bool sort = false);
+private:
+	RC GetRelCatEntry(const char *relName, RM_Record &rec);
+	RC GetAttrCatEntry(const char *relName, const char *attrName, RM_Record &rec);
 };
 
 //
@@ -56,11 +70,19 @@ public:
 //
 void SM_PrintError(RC rc);
 
-#define SM_SOMEWARNING    (START_SM_WARN + 0)  // cannot find key
-#define SM_LASTWARN SM_SOMEWARNING
+
+#define SM_REL_EXISTS            (START_SM_WARN + 0)
+#define SM_REL_NOTEXIST          (START_SM_WARN + 1)
+#define SM_ATTR_NOTEXIST         (START_SM_WARN + 2)
+#define SM_INDEX_EXISTS          (START_SM_WARN + 3)
+#define SM_INDEX_NOTEXIST        (START_SM_WARN + 4)
+#define SM_FILE_FORMAT_INCORRECT (START_SM_WARN + 5)
+#define SM_FILE_NOT_FOUND        (START_SM_WARN + 6)
+#define SM_LASTWARN SM_FILE_NOT_FOUND
 
 
-#define SM_SOMEERROR      (START_SM_ERR - 0)  // key size too big
-#define SM_LASTERROR SM_SOMEERROR
+#define SM_CHDIR_FAILED    (START_SM_ERR - 0)
+#define SM_CATALOG_CORRUPT (START_SM_ERR - 1)
+#define SM_LASTERROR SM_CATALOG_CORRUPT
 
 #endif // SM_H

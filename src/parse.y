@@ -617,7 +617,7 @@ void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm)
 //
 // Functions for printing the various structures to an output stream
 //
-ostream &operator<<(ostream &s, const AttrInfo &ai)
+ostream &operator<<(ostream &s, const DataAttrInfo &ai)
 {
    return
       s << " attrName=" << ai.attrName

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 project(rebase)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32 -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -std=c++11 -Wno-deprecated-register")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -std=c++11")
 
 find_package(FLEX)
 find_package(BISON)

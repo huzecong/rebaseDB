@@ -57,8 +57,8 @@ public:
 	RC Set        (const char *paramName,         // set parameter to
 	               const char *value);            //   value
 	
-	RC GetRelEntry(const char *relName, RelCatEntry *&relEntry);
-	RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry *&attrEntry);
+	RC GetRelEntry(const char *relName, RelCatEntry &relEntry);
+	RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry);
 	RC GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo *&attributes, bool sort = false);
 private:
 	RC GetRelCatEntry(const char *relName, RM_Record &rec);
@@ -78,6 +78,7 @@ void SM_PrintError(RC rc);
 #define SM_INDEX_NOTEXIST        (START_SM_WARN + 4)
 #define SM_FILE_FORMAT_INCORRECT (START_SM_WARN + 5)
 #define SM_FILE_NOT_FOUND        (START_SM_WARN + 6)
+#define SM_STRING_ATTR_TOO_LONG  (START_SM_WARN + 7)
 #define SM_LASTWARN SM_FILE_NOT_FOUND
 
 

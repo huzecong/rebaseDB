@@ -101,6 +101,5 @@ typedef char Boolean;
 
 #define TRY(_x) if (int __rc = (_x)) return __rc;
 #define CVOID(_x) (*(reinterpret_cast<char**>(&(_x))))
-#define COPYSTR(dst, src) memcpy(dst, src, strlen(src))
 
 #endif

@@ -85,13 +85,13 @@ int main(int argc, char *argv[]) {
 	rmm.OpenFile("relcat", handle);
 	RelCatEntry relEntry;
 	
-	COPYSTR(relEntry.relName, relName[0]);
+	memcpy(relEntry.relName, relName[0], MAXNAME + 1);
 	relEntry.tupleLength = sizeof(RelCatEntry);
 	relEntry.attrCount = 4;
 	relEntry.indexCount = 0;
 	handle.InsertRec((const char *)&relEntry, rid);
 	
-	COPYSTR(relEntry.relName, relName[1]);
+	memcpy(relEntry.relName, relName[1], MAXNAME + 1);
 	relEntry.tupleLength = sizeof(AttrCatEntry);
 	relEntry.attrCount = 6;
 	relEntry.indexCount = 0;

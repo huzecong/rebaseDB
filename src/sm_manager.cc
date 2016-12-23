@@ -42,19 +42,19 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
 	for (int i = 0; i < attrCount; ++i) {
 		AttrCatEntry attrEntry;
 		memset(&attrEntry, 0, sizeof attrEntry);
-		COPYSTR(attrEntry.relName, relName);
-		COPYSTR(attrEntry.attrName, attributes[i].attrName);
+		strcpy(attrEntry.relName, relName);
+		strcpy(attrEntry.attrName, attributes[i].attrName);
 		attrEntry.offset = offset;
 		attrEntry.attrType = attributes[i].attrType;
-		attrEntry.attrLength = attributes[i].attrLength;
-		offset += (attributes[i].attrLength + 3) & (~0x3);
+		attrEntry.attrLength = attributes[i].attrLength + (int)(attrEntry.attrType == STRING);
+		offset += (attrEntry.attrLength + 3) & (~0x3);
 		attrEntry.indexNo = -1;
 		TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
 	}
 	
 	RelCatEntry relEntry;
 	memset(&relEntry, 0, sizeof(RelCatEntry));
-	COPYSTR(relEntry.relName, relName);
+	strcpy(relEntry.relName, relName);
 	relEntry.tupleLength = offset;
 	relEntry.attrCount = attrCount;
 	relEntry.indexCount = 0;
@@ -165,7 +165,7 @@ RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 }
 
 RC SM_Manager::Load(const char *relName, const char *fileName) {
-	RelCatEntry *relEntry;
+	RelCatEntry relEntry;
 	TRY(GetRelEntry(relName, relEntry));
 	int attrCount;
 	DataAttrInfo *attributes;
@@ -173,7 +173,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 	
 	RM_FileHandle fileHandle;
 	RID rid;
-	char *data = new char[relEntry->tupleLength];
+	char *data = new char[relEntry.tupleLength];
 	IX_IndexHandle *indexHandles = new IX_IndexHandle[attrCount];
 	for (int i = 0; i < attrCount; ++i)
 		if (attributes[i].indexNo != -1)
@@ -182,32 +182,44 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 	FILE *file = fopen(fileName, "r");
 	if (!file) return SM_FILE_NOT_FOUND;
 	
-	char buffer[MAXATTRS * MAXNAME + 1];
+	char buffer[MAXATTRS * MAXSTRINGLEN + 1];
 	int cnt = 0;
 	while (!feof(file)) {
 		fscanf(file, "%[^\n]\n", buffer);
-		memset(data, 0, (size_t)relEntry->tupleLength);
+		memset(data, 0, (size_t)relEntry.tupleLength);
 		int p = 0, q = 0, l = (int)strlen(buffer);
 		for (int i = 0; i < attrCount; ++i) {
 			for (q = p; q < l && buffer[q] != ','; ++q);
-			if (q == l && i != attrCount - 1) return SM_FILE_FORMAT_INCORRECT;
+			if (q == l && i != attrCount - 1) {
+				std::cerr << cnt + 1 << ":" << q << " " << "too few columns" << std::endl;
+				return SM_FILE_FORMAT_INCORRECT;
+			}
 			buffer[q] = 0;
 			switch (attributes[i].attrType) {
 				case INT: {
 					char *end = NULL;
 					*(int *)(data + attributes[i].offset) = strtol(buffer + p, &end, 10);
-					if (end == data + attributes[i].offset) return SM_FILE_FORMAT_INCORRECT;
+					if (end == data + attributes[i].offset) {
+						std::cerr << cnt + 1 << ":" << q << " " << "incorrect integer" << std::endl;
+						return SM_FILE_FORMAT_INCORRECT;
+					}
 					break;
 				}
 				case FLOAT: {
 					char *end = NULL;
 					*(float *)(data + attributes[i].offset) = strtof(buffer + p, &end);
-					if (end == data + attributes[i].offset) return SM_FILE_FORMAT_INCORRECT;
+					if (end == data + attributes[i].offset) {
+						std::cerr << cnt + 1 << ":" << q << " " << "incorrect float" << std::endl;
+						return SM_FILE_FORMAT_INCORRECT;
+					}
 					break;
 				}
 				case STRING: {
-					if (q - p > attributes[i].attrLength) return SM_FILE_FORMAT_INCORRECT;
-					COPYSTR(data + attributes[i].offset, buffer + p);
+					if (q - p > attributes[i].attrLength) {
+						std::cerr << cnt + 1 << ":" << q << " " << "string too long" << std::endl;
+						return SM_FILE_FORMAT_INCORRECT;
+					}
+					strcpy(data + attributes[i].offset, buffer + p);
 					break;
 				}
 			}
@@ -285,27 +297,30 @@ RC SM_Manager::Set(const char *paramName, const char *value) {
 	return 0;
 }
 
-RC SM_Manager::GetRelEntry(const char *relName, RelCatEntry *&relEntry) {
+RC SM_Manager::GetRelEntry(const char *relName, RelCatEntry &relEntry) {
 	RM_Record rec;
+	char *data;
 	
 	TRY(GetRelCatEntry(relName, rec));
-	TRY(rec.GetData((char *&)relEntry));
+	TRY(rec.GetData(data));
+	relEntry = *(RelCatEntry *)data;
 	
 	return 0;
 }
 
-RC SM_Manager::GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry *&attrEntry) {
+RC SM_Manager::GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry) {
 	RM_Record rec;
+	char *data;
 	
 	TRY(GetAttrCatEntry(relName, attrName, rec));
-	TRY(rec.GetData((char *&)attrEntry));
+	TRY(rec.GetData(data));
+	attrEntry = *(AttrCatEntry *)data;
 	
 	return 0;
 }
 
 RC SM_Manager::GetRelCatEntry(const char *relName, RM_Record &rec) {
 	RM_FileScan scan;
-	RelCatEntry *entry;
 	
 	TRY(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(RelCatEntry, relName),
 	                  EQ_OP, (void *)relName));
@@ -344,11 +359,11 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
 	RM_FileScan scan;
 	RM_Record rec;
 	RID rid;
-	RelCatEntry *relEntry;
+	RelCatEntry relEntry;
 	AttrCatEntry *attrEntry;
 	
 	TRY(GetRelEntry(relName, relEntry));
-	attrCount = relEntry->attrCount;
+	attrCount = relEntry.attrCount;
 	attributes = new DataAttrInfo[attrCount];
 	
 	TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
@@ -358,8 +373,8 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
 	while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
 		if (retcode) return retcode;
 		TRY(rec.GetData((char *&)attrEntry));
-		COPYSTR(attributes[i].relName, attrEntry->relName);
-		COPYSTR(attributes[i].attrName, attrEntry->attrName);
+		strcpy(attributes[i].relName, attrEntry->relName);
+		strcpy(attributes[i].attrName, attrEntry->attrName);
 		attributes[i].offset = attrEntry->offset;
 		attributes[i].attrType = attrEntry->attrType;
 		attributes[i].attrLength = attrEntry->attrLength;

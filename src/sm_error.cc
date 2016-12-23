@@ -21,6 +21,7 @@ static const char *SM_WarnMsg[] = {
         "index does not exist for given attribute",
         "file to load has incorrect format",
         "file not found",
+        "length of string-typed attribute should not exceed MAXSTRINGLEN=255"
 };
 
 static const char *SM_ErrorMsg[] = {

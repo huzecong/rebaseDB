@@ -5,9 +5,12 @@
 #ifndef REBASE_SM_MANAGER_H
 #define REBASE_SM_MANAGER_H
 
-#include <unistd.h>
 #include "sm.h"
 #include "printer.h"
+
+#include <unistd.h>
+#include <stddef.h>
+#include <algorithm>
 
 SM_Manager::SM_Manager(IX_Manager &ixm_, RM_Manager &rmm_) {
 	this->ixm = &ixm_;
@@ -33,10 +36,10 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
 	RM_FileScan scan;
 	RM_Record rec;
 	TRY(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(RelCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	if (scan.GetNextRec(rec) != RM_EOF) return SM_REL_EXISTS;
 	TRY(scan.CloseScan());
-	
+
 	RID rid;
 	int offset = 0;
 	for (int i = 0; i < attrCount; ++i) {
@@ -51,7 +54,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
 		attrEntry.indexNo = -1;
 		TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
 	}
-	
+
 	RelCatEntry relEntry;
 	memset(&relEntry, 0, sizeof(RelCatEntry));
 	strcpy(relEntry.relName, relName);
@@ -59,12 +62,12 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
 	relEntry.attrCount = attrCount;
 	relEntry.indexCount = 0;
 	TRY(relcat.InsertRec((const char *)&relEntry, rid));
-	
+
 	TRY(relcat.ForcePages());
 	TRY(attrcat.ForcePages());
-	
+
 	TRY(rmm->CreateFile(relName, relEntry.tupleLength));
-	
+
 	return 0;
 }
 
@@ -73,11 +76,11 @@ RC SM_Manager::DropTable(const char *relName) {
 	RM_FileScan scan;
 	RM_Record rec;
 	RID rid;
-	
+
 	TRY(rmm->DestroyFile(relName));
-	
+
 	TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	RC retcode;
 	while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
 		if (retcode) return retcode;
@@ -88,17 +91,17 @@ RC SM_Manager::DropTable(const char *relName) {
 		TRY(attrcat.DeleteRec(rid));
 	}
 	TRY(scan.CloseScan());
-	
+
 	TRY(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(RelCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	TRY(scan.GetNextRec(rec));
 	TRY(rec.GetRid(rid));
 	TRY(relcat.DeleteRec(rid));
 	TRY(scan.CloseScan());
-	
+
 	TRY(relcat.ForcePages());
 	TRY(attrcat.ForcePages());
-	
+
 	return 0;
 }
 
@@ -106,13 +109,13 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	RM_Record relRec, attrRec;
 	RelCatEntry *relEntry;
 	AttrCatEntry *attrEntry;
-	
+
 	TRY(GetRelCatEntry(relName, relRec));
 	TRY(relRec.GetData((char *&)relEntry));
 	TRY(GetAttrCatEntry(relName, attrName, attrRec));
 	TRY(attrRec.GetData((char *&)attrEntry));
 	if (attrEntry->indexNo != -1) return SM_INDEX_EXISTS;
-	
+
 	int indexNo = relEntry->indexCount;
 	IX_IndexHandle indexHandle;
 	RM_FileHandle fileHandle;
@@ -134,33 +137,33 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	TRY(scan.CloseScan());
 	TRY(ixm->CloseIndex(indexHandle));
 	TRY(rmm->CloseFile(fileHandle));
-	
+
 	attrEntry->indexNo = indexNo;
 	++relEntry->indexCount;
 	TRY(relcat.UpdateRec(relRec));
 	TRY(attrcat.UpdateRec(attrRec));
-	
+
 	TRY(relcat.ForcePages());
 	TRY(attrcat.ForcePages());
-	
+
 	return 0;
 }
 
 RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 	RM_Record attrRec;
 	AttrCatEntry *attrEntry;
-	
+
 	TRY(GetAttrCatEntry(relName, attrName, attrRec));
 	TRY(attrRec.GetData((char *&)attrEntry));
 	if (attrEntry->indexNo == -1) return SM_INDEX_NOTEXIST;
-	
+
 	TRY(ixm->DestroyIndex(relName, attrEntry->indexNo));
 	attrEntry->indexNo = -1;
 	TRY(relcat.UpdateRec(attrRec));
-	
+
 	TRY(relcat.ForcePages());
 	TRY(attrcat.ForcePages());
-	
+
 	return 0;
 }
 
@@ -170,7 +173,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 	int attrCount;
 	DataAttrInfo *attributes;
 	TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
-	
+
 	RM_FileHandle fileHandle;
 	RID rid;
 	char *data = new char[relEntry.tupleLength];
@@ -181,7 +184,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 	TRY(rmm->OpenFile(relName, fileHandle));
 	FILE *file = fopen(fileName, "r");
 	if (!file) return SM_FILE_NOT_FOUND;
-	
+
 	char buffer[MAXATTRS * MAXSTRINGLEN + 1];
 	int cnt = 0;
 	while (!feof(file)) {
@@ -232,14 +235,14 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 		}
 		++cnt;
 	}
-	
+
 	for (int i = 0; i < attrCount; ++i)
 		if (attributes[i].indexNo != -1)
 			TRY(ixm->CloseIndex(indexHandles[i]))
 	TRY(rmm->CloseFile(fileHandle));
-	
+
 	std::cout << cnt << " values loaded." << std::endl;
-	
+
 	delete[] data;
 	delete[] indexHandles;
 	return 0;
@@ -255,13 +258,13 @@ RC SM_Manager::Help(const char *relName) {
 	TRY(GetDataAttrInfo("attrcat", attrCount, attributes));
 	Printer printer(attributes, attrCount);
 	TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
-	
+
 	printer.PrintHeader(std::cout);
 	for (int i = 0; i < attrCount; ++i)
 		printer.Print(std::cout, (char *)&attributes[i]);
-	
+
 	printer.PrintFooter(std::cout);
-	
+
 	return 0;
 }
 
@@ -269,10 +272,10 @@ RC SM_Manager::Print(const char *relName) {
 	int attrCount;
 	DataAttrInfo *attributes;
 	TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
-	
+
 	Printer printer(attributes, attrCount);
 	printer.PrintHeader(std::cout);
-	
+
 	RM_FileHandle fileHandle;
 	RM_FileScan scan;
 	RM_Record rec;
@@ -287,9 +290,9 @@ RC SM_Manager::Print(const char *relName) {
 	}
 	TRY(scan.CloseScan());
 	TRY(rmm->CloseFile(fileHandle));
-	
+
 	printer.PrintFooter(std::cout);
-	
+
 	return 0;
 }
 
@@ -300,35 +303,35 @@ RC SM_Manager::Set(const char *paramName, const char *value) {
 RC SM_Manager::GetRelEntry(const char *relName, RelCatEntry &relEntry) {
 	RM_Record rec;
 	char *data;
-	
+
 	TRY(GetRelCatEntry(relName, rec));
 	TRY(rec.GetData(data));
 	relEntry = *(RelCatEntry *)data;
-	
+
 	return 0;
 }
 
 RC SM_Manager::GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry) {
 	RM_Record rec;
 	char *data;
-	
+
 	TRY(GetAttrCatEntry(relName, attrName, rec));
 	TRY(rec.GetData(data));
 	attrEntry = *(AttrCatEntry *)data;
-	
+
 	return 0;
 }
 
 RC SM_Manager::GetRelCatEntry(const char *relName, RM_Record &rec) {
 	RM_FileScan scan;
-	
+
 	TRY(scan.OpenScan(relcat, STRING, MAXNAME + 1, offsetof(RelCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	RC retcode = scan.GetNextRec(rec);
 	if (retcode == RM_EOF) return SM_REL_NOTEXIST;
 	if (retcode) return retcode;
 	TRY(scan.CloseScan());
-	
+
 	return 0;
 }
 
@@ -336,9 +339,9 @@ RC SM_Manager::GetAttrCatEntry(const char *relName, const char *attrName, RM_Rec
 	AttrCatEntry *attrEntry;
 	RM_FileScan scan;
 	RID rid;
-	
+
 	TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	RC retcode;
 	bool found = false;
 	while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
@@ -351,7 +354,7 @@ RC SM_Manager::GetAttrCatEntry(const char *relName, const char *attrName, RM_Rec
 	}
 	TRY(scan.CloseScan());
 	if (!found) return SM_ATTR_NOTEXIST;
-	
+
 	return 0;
 }
 
@@ -361,13 +364,13 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
 	RID rid;
 	RelCatEntry relEntry;
 	AttrCatEntry *attrEntry;
-	
+
 	TRY(GetRelEntry(relName, relEntry));
 	attrCount = relEntry.attrCount;
 	attributes = new DataAttrInfo[attrCount];
-	
+
 	TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
-	                  EQ_OP, (void *)relName));
+					  EQ_OP, (void *)relName));
 	RC retcode;
 	int i = 0;
 	while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
@@ -383,12 +386,12 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
 	}
 	TRY(scan.CloseScan());
 	if (i != attrCount) return SM_CATALOG_CORRUPT;
-	
+
 	if (sort) {
 		std::sort(attributes, attributes + attrCount,
-		          [](const DataAttrInfo &a, const DataAttrInfo &b) { return a.offset < b.offset; });
+				  [](const DataAttrInfo &a, const DataAttrInfo &b) { return a.offset < b.offset; });
 	}
-	
+
 	return 0;
 }
 

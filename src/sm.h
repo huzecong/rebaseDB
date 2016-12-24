@@ -24,10 +24,10 @@
 //
 class SM_Manager {
 	friend class QL_Manager;
-	
+
 	RM_Manager *rmm;
 	IX_Manager *ixm;
-	
+
 	RM_FileHandle relcat, attrcat;
 public:
 	SM_Manager    (IX_Manager &ixm_, RM_Manager &rmm_);
@@ -40,15 +40,15 @@ public:
 	               int        attrCount,          //   number of attributes
 	               AttrInfo   *attributes);       //   attribute data
 	RC DropTable  (const char *relName);          // destroy a relation
-	
+
 	RC CreateIndex(const char *relName,           // create an index for
 	               const char *attrName);         //   relName.attrName
 	RC DropIndex  (const char *relName,           // destroy index on
 	               const char *attrName);         //   relName.attrName
-	
+
 	RC Load       (const char *relName,           // load relName from
 	               const char *fileName);         //   fileName
-	
+
 	RC Help       ();                             // Print relations in db
 	RC Help       (const char *relName);          // print schema of relName
 
@@ -56,7 +56,7 @@ public:
 
 	RC Set        (const char *paramName,         // set parameter to
 	               const char *value);            //   value
-	
+
 	RC GetRelEntry(const char *relName, RelCatEntry &relEntry);
 	RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry);
 	RC GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo *&attributes, bool sort = false);

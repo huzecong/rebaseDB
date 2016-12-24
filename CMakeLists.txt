@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.5)
 project(rebase)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32 -g")

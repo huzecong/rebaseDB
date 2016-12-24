@@ -5,10 +5,12 @@
 // This file contains the interface for the Printer class and some
 // functions that will be used by both the SM and QL components.
 
+#include "printer.h"
+
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-#include "printer.h"
+#include <algorithm>
 
 using namespace std;
 
@@ -81,7 +83,7 @@ Printer::Printer(const DataAttrInfo *attributes_, const int attrCount_) {
 		if (attributes[i].attrType == STRING)
 			spaces[i] = min(attributes[i].attrLength, MAXPRINTSTRING);
 		else
-			spaces[i] = max(12, strlen(psHeader[i]));
+			spaces[i] = max(12U, strlen(psHeader[i]));
 
 		// We must subtract out those characters that will be for the
 		// header.

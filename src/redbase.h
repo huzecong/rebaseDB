@@ -11,15 +11,15 @@
 // Globally-useful defines
 //
 #define MAXNAME       24                // maximum length of a relation
-										// or attribute name
+                                        // or attribute name
 #define MAXSTRINGLEN  255               // maximum length of a
-										// string-type attribute
+                                        // string-type attribute
 #define MAXATTRS      40                // maximum number of attributes
-										// in a relation
+                                        // in a relation
 
 //#define yywrap() 1
 inline static int yywrap() {
-	return 1;
+    return 1;
 }
 void yyerror(const char *);
 
@@ -60,24 +60,24 @@ const int ALL_PAGES = -1;
 // Attribute types
 //
 enum AttrType {
-	INT,
-	FLOAT,
-	STRING
+    INT,
+    FLOAT,
+    STRING
 };
 
 //
 // Comparison operators
 //
 enum CompOp {
-	NO_OP,                                      // no comparison
-	EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP    // binary atomic operators
+    NO_OP,                                      // no comparison
+    EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP    // binary atomic operators
 };
 
 //
 // Pin Strategy Hint
 //
 enum ClientHint {
-	NO_HINT                                     // default value
+    NO_HINT                                     // default value
 };
 
 //

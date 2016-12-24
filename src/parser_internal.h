@@ -20,179 +20,179 @@ typedef float real;
 /*
  * the prompt
  */
-#define PROMPT	"\nREDBASE >> "
+#define PROMPT  "\nREDBASE >> "
 
 /*
  * REL_ATTR: describes a qualified attribute (relName.attrName)
  */
 typedef struct {
-	char *relName;      /* relation name        */
-	char *attrName;     /* attribute name       */
+    char *relName;      /* relation name        */
+    char *attrName;     /* attribute name       */
 } REL_ATTR;
 
 /*
  * ATTR_VAL: <attribute, value> pair
  */
 typedef struct {
-	char *attrName;     /* attribute name       */
-	enum AttrType valType;   /* type of value        */
-	int valLength;      /* length if type = STRING */
-	void *value;        /* value for attribute  */
+    char *attrName;     /* attribute name       */
+    enum AttrType valType;   /* type of value        */
+    int valLength;      /* length if type = STRING */
+    void *value;        /* value for attribute  */
 } ATTR_VAL;
 
 /*
  * all the available kinds of nodes
  */
 typedef enum {
-	N_CREATETABLE,
-	N_CREATEINDEX,
-	N_DROPTABLE,
-	N_DROPINDEX,
-	N_LOAD,
-	N_SET,
-	N_HELP,
-	N_PRINT,
-	N_QUERY,
-	N_INSERT,
-	N_DELETE,
-	N_UPDATE,
-	N_RELATTR,
-	N_CONDITION,
-	N_RELATTR_OR_VALUE,
-	N_ATTRTYPE,
-	N_VALUE,
-	N_RELATION,
-	N_STATISTICS,
-	N_LIST
+    N_CREATETABLE,
+    N_CREATEINDEX,
+    N_DROPTABLE,
+    N_DROPINDEX,
+    N_LOAD,
+    N_SET,
+    N_HELP,
+    N_PRINT,
+    N_QUERY,
+    N_INSERT,
+    N_DELETE,
+    N_UPDATE,
+    N_RELATTR,
+    N_CONDITION,
+    N_RELATTR_OR_VALUE,
+    N_ATTRTYPE,
+    N_VALUE,
+    N_RELATION,
+    N_STATISTICS,
+    N_LIST
 } NODEKIND;
 
 /*
  * structure of parse tree nodes
  */
 typedef struct node {
-	NODEKIND kind;
+    NODEKIND kind;
 
-	union {
-		/* SM component nodes */
-		/* create table node */
-		struct {
-			char *relname;
-			struct node *attrlist;
-		} CREATETABLE;
+    union {
+        /* SM component nodes */
+        /* create table node */
+        struct {
+            char *relname;
+            struct node *attrlist;
+        } CREATETABLE;
 
-		/* create index node */
-		struct {
-			char *relname;
-			char *attrname;
-		} CREATEINDEX;
+        /* create index node */
+        struct {
+            char *relname;
+            char *attrname;
+        } CREATEINDEX;
 
-		/* drop index node */
-		struct {
-			char *relname;
-			char *attrname;
-		} DROPINDEX;
+        /* drop index node */
+        struct {
+            char *relname;
+            char *attrname;
+        } DROPINDEX;
 
-		/* drop table node */
-		struct {
-			char *relname;
-		} DROPTABLE;
+        /* drop table node */
+        struct {
+            char *relname;
+        } DROPTABLE;
 
-		/* load node */
-		struct {
-			char *relname;
-			char *filename;
-		} LOAD;
+        /* load node */
+        struct {
+            char *relname;
+            char *filename;
+        } LOAD;
 
-		/* set node */
-		struct {
-			char *paramName;
-			char *string;
-		} SET;
+        /* set node */
+        struct {
+            char *paramName;
+            char *string;
+        } SET;
 
-		/* help node */
-		struct {
-			char *relname;
-		} HELP;
+        /* help node */
+        struct {
+            char *relname;
+        } HELP;
 
-		/* print node */
-		struct {
-			char *relname;
-		} PRINT;
+        /* print node */
+        struct {
+            char *relname;
+        } PRINT;
 
-		/* QL component nodes */
-		/* query node */
-		struct {
-			struct node *relattrlist;
-			struct node *rellist;
-			struct node *conditionlist;
-		} QUERY;
+        /* QL component nodes */
+        /* query node */
+        struct {
+            struct node *relattrlist;
+            struct node *rellist;
+            struct node *conditionlist;
+        } QUERY;
 
-		/* insert node */
-		struct {
-			char *relname;
-			struct node *valuelist;
-		} INSERT;
+        /* insert node */
+        struct {
+            char *relname;
+            struct node *valuelist;
+        } INSERT;
 
-		/* delete node */
-		struct {
-			char *relname;
-			struct node *conditionlist;
-		} DELETE;
+        /* delete node */
+        struct {
+            char *relname;
+            struct node *conditionlist;
+        } DELETE;
 
-		/* update node */
-		struct {
-			char *relname;
-			struct node *relattr;
-			struct node *relorvalue;
-			struct node *conditionlist;
-		} UPDATE;
+        /* update node */
+        struct {
+            char *relname;
+            struct node *relattr;
+            struct node *relorvalue;
+            struct node *conditionlist;
+        } UPDATE;
 
-		/* command support nodes */
-		/* relation attribute node */
-		struct {
-			char *relname;
-			char *attrname;
-		} RELATTR;
+        /* command support nodes */
+        /* relation attribute node */
+        struct {
+            char *relname;
+            char *attrname;
+        } RELATTR;
 
-		/* condition node */
-		struct {
-			struct node *lhsRelattr;
-			enum CompOp op;
-			struct node *rhsRelattr;
-			struct node *rhsValue;
-		} CONDITION;
+        /* condition node */
+        struct {
+            struct node *lhsRelattr;
+            enum CompOp op;
+            struct node *rhsRelattr;
+            struct node *rhsValue;
+        } CONDITION;
 
-		/* relation-attribute or value */
-		struct {
-			struct node *relattr;
-			struct node *value;
-		} RELATTR_OR_VALUE;
+        /* relation-attribute or value */
+        struct {
+            struct node *relattr;
+            struct node *value;
+        } RELATTR_OR_VALUE;
 
-		/* <attribute, type> pair */
-		struct {
-			char *attrname;
-			char *type;
-		} ATTRTYPE;
+        /* <attribute, type> pair */
+        struct {
+            char *attrname;
+            char *type;
+        } ATTRTYPE;
 
-		/* <value, type> pair */
-		struct {
-			enum AttrType type;
-			int  ival;
-			real rval;
-			char *sval;
-		} VALUE;
+        /* <value, type> pair */
+        struct {
+            enum AttrType type;
+            int  ival;
+            real rval;
+            char *sval;
+        } VALUE;
 
-		/* relation node */
-		struct {
-			char *relname;
-		} RELATION;
+        /* relation node */
+        struct {
+            char *relname;
+        } RELATION;
 
-		/* list node */
-		struct {
-			struct node *curr;
-			struct node *next;
-		} LIST;
-	} u;
+        /* list node */
+        struct {
+            struct node *curr;
+            struct node *next;
+        } LIST;
+    } u;
 } NODE;
 
 

@@ -14,40 +14,40 @@
 // Structure declarations and output functions
 //
 struct AttrInfo {
-	char     *attrName;   /* attribute name       */
-	enum AttrType attrType;    /* type of attribute    */
-	int      attrLength;  /* length of attribute  */
+    char     *attrName;   /* attribute name       */
+    enum AttrType attrType;    /* type of attribute    */
+    int      attrLength;  /* length of attribute  */
 };
 
 struct RelAttr {
-	char     *relName;    // Relation name (may be NULL)
-	char     *attrName;   // Attribute name
+    char     *relName;    // Relation name (may be NULL)
+    char     *attrName;   // Attribute name
 #ifdef __cplusplus
-	// Print function
-	friend std::ostream &operator<<(std::ostream &s, const RelAttr &ra);
+    // Print function
+    friend std::ostream &operator<<(std::ostream &s, const RelAttr &ra);
 #endif
 };
 
 struct Value {
-	enum AttrType type;         /* type of value               */
-	void     *data;        /* value                       */
+    enum AttrType type;         /* type of value               */
+    void     *data;        /* value                       */
 #ifdef __cplusplus
-			   /* print function              */
-	friend std::ostream &operator<<(std::ostream &s, const Value &v);
+               /* print function              */
+    friend std::ostream &operator<<(std::ostream &s, const Value &v);
 #endif
 };
 
 struct Condition {
-	struct RelAttr  lhsAttr;    /* left-hand side attribute            */
-	enum CompOp   op;         /* comparison operator                 */
-	int      bRhsIsAttr; /* TRUE if the rhs is an attribute,    */
-						 /* in which case rhsAttr below is valid;*/
-						 /* otherwise, rhsValue below is valid.  */
-	struct RelAttr  rhsAttr;    /* right-hand side attribute            */
-	struct Value    rhsValue;   /* right-hand side value                */
+    struct RelAttr  lhsAttr;    /* left-hand side attribute            */
+    enum CompOp   op;         /* comparison operator                 */
+    int      bRhsIsAttr; /* TRUE if the rhs is an attribute,    */
+                         /* in which case rhsAttr below is valid;*/
+                         /* otherwise, rhsValue below is valid.  */
+    struct RelAttr  rhsAttr;    /* right-hand side attribute            */
+    struct Value    rhsValue;   /* right-hand side value                */
 #ifdef __cplusplus
-			 /* print function                               */
-	friend std::ostream &operator<<(std::ostream &s, const Condition &c);
+             /* print function                               */
+    friend std::ostream &operator<<(std::ostream &s, const Condition &c);
 #endif
 
 };

@@ -34,7 +34,7 @@ using namespace std;
 #define FILENAME   "testrel"         // test file name
 #define STRLEN      29               // length of string in testrec
 #define PROG_UNIT   500               // how frequently to give progress
-									  //   reports when adding lots of recs
+                                      //   reports when adding lots of recs
 #define FEW_RECS   20                // number of records added in
 #define LOTS_OF_RECS 12345
 
@@ -49,9 +49,9 @@ using namespace std;
 // Structure of the records we will be using for the tests
 //
 struct TestRec {
-	char  str[STRLEN];
-	int   num;
-	float r;
+    char  str[STRLEN];
+    int   num;
+    float r;
 };
 
 //
@@ -92,13 +92,13 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
-	Test1,
-	Test2,
-	Test3,
-	Test4,
-	Test5,
-	Test6,
-	Test7,
+    Test1,
+    Test2,
+    Test3,
+    Test4,
+    Test5,
+    Test6,
+    Test7,
 };
 #define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
@@ -107,63 +107,63 @@ int (*tests[])() =                      // RC doesn't work on some compilers
 //
 int main(int argc, char *argv[])
 {
-	FLAGS_logtostderr = true;
-	google::InitGoogleLogging(argv[0]);
+    FLAGS_logtostderr = true;
+    google::InitGoogleLogging(argv[0]);
 
-	RC   rc;
-	char *progName = argv[0];   // since we will be changing argv
-	int  testNum;
+    RC   rc;
+    char *progName = argv[0];   // since we will be changing argv
+    int  testNum;
 
-	// Write out initial starting message
-	cerr.flush();
-	cout.flush();
-	cout << "Starting RM component test.\n";
-	cout.flush();
+    // Write out initial starting message
+    cerr.flush();
+    cout.flush();
+    cout << "Starting RM component test.\n";
+    cout.flush();
 
-	// Delete files from last time
-	unlink(FILENAME);
+    // Delete files from last time
+    unlink(FILENAME);
 
-	// If no argument given, do all tests
-	if (argc == 1) {
-		for (testNum = 0; testNum < NUM_TESTS; testNum++)
-			if ((rc = (tests[testNum])())) {
+    // If no argument given, do all tests
+    if (argc == 1) {
+        for (testNum = 0; testNum < NUM_TESTS; testNum++)
+            if ((rc = (tests[testNum])())) {
 
-				// Print the error and exit
-				PrintError(rc);
-				return (1);
-			}
-	}
-	else {
+                // Print the error and exit
+                PrintError(rc);
+                return (1);
+            }
+    }
+    else {
 
-		// Otherwise, perform specific tests
-		while (*++argv != NULL) {
+        // Otherwise, perform specific tests
+        while (*++argv != NULL) {
 
-			// Make sure it's a number
-			if (sscanf(*argv, "%d", &testNum) != 1) {
-				cerr << progName << ": " << *argv << " is not a number\n";
-				continue;
-			}
+            // Make sure it's a number
+            if (sscanf(*argv, "%d", &testNum) != 1) {
+                cerr << progName << ": " << *argv << " is not a number\n";
+                continue;
+            }
 
-			// Make sure it's in range
-			if (testNum < 1 || testNum > NUM_TESTS) {
-				cerr << "Valid test numbers are between 1 and " << NUM_TESTS << "\n";
-				continue;
-			}
+            // Make sure it's in range
+            if (testNum < 1 || testNum > NUM_TESTS) {
+                cerr << "Valid test numbers are between 1 and " << NUM_TESTS << "\n";
+                continue;
+            }
 
-			// Perform the test
-			if ((rc = (tests[testNum - 1])())) {
+            // Perform the test
+            if ((rc = (tests[testNum - 1])())) {
 
-				// Print the error and exit
-				PrintError(rc);
-				return (1);
-			}
-		}
-	}
+                // Print the error and exit
+                PrintError(rc);
+                return (1);
+            }
+        }
+    }
 
-	// Write ending message and exit
-	cout << "Ending RM component test.\n\n";
+    // Write ending message and exit
+    cout << "Ending RM component test.\n\n";
 
-	return (0);
+    return (0);
 }
 
 //
@@ -174,12 +174,12 @@ int main(int argc, char *argv[])
 //
 void PrintError(RC rc)
 {
-	if (abs(rc) <= END_PF_WARN)
-		PF_PrintError(rc);
-	else if (abs(rc) <= END_RM_WARN)
-		RM_PrintError(rc);
-	else
-		cerr << "Error code out of range: " << rc << "\n";
+    if (abs(rc) <= END_PF_WARN)
+        PF_PrintError(rc);
+    else if (abs(rc) <= END_RM_WARN)
+        RM_PrintError(rc);
+    else
+        cerr << "Error code out of range: " << rc << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -193,11 +193,11 @@ void PrintError(RC rc)
 //
 void LsFile(char *fileName)
 {
-	char command[80];
+    char command[80];
 
-	sprintf(command, "ls -l %s", fileName);
-	printf("doing \"%s\"\n", command);
-	system(command);
+    sprintf(command, "ls -l %s", fileName);
+    printf("doing \"%s\"\n", command);
+    system(command);
 }
 
 //
@@ -207,7 +207,7 @@ void LsFile(char *fileName)
 //
 void PrintRecord(TestRec &recBuf)
 {
-	printf("[%s, %d, %f]\n", recBuf.str, recBuf.num, recBuf.r);
+    printf("[%s, %d, %f]\n", recBuf.str, recBuf.num, recBuf.r);
 }
 
 //
@@ -217,43 +217,43 @@ void PrintRecord(TestRec &recBuf)
 //
 RC AddRecs(RM_FileHandle &fh, int numRecs)
 {
-	RC      rc;
-	int     i;
-	TestRec recBuf;
-	RID     rid;
-	PageNum pageNum;
-	SlotNum slotNum;
+    RC      rc;
+    int     i;
+    TestRec recBuf;
+    RID     rid;
+    PageNum pageNum;
+    SlotNum slotNum;
 
-	// We set all of the TestRec to be 0 initially.  This heads off
-	// warnings that Purify will give regarding UMR since sizeof(TestRec)
-	// is 40, whereas actual size is 37.
-	memset((void *)&recBuf, 0, sizeof(recBuf));
+    // We set all of the TestRec to be 0 initially.  This heads off
+    // warnings that Purify will give regarding UMR since sizeof(TestRec)
+    // is 40, whereas actual size is 37.
+    memset((void *)&recBuf, 0, sizeof(recBuf));
 
-	printf("\nadding %d records\n", numRecs);
-	for (i = 0; i < numRecs; i++) {
-		memset(recBuf.str, ' ', STRLEN);
-		sprintf(recBuf.str, "a%d", i);
-		recBuf.num = i;
-		recBuf.r = (float)i;
-		if ((rc = InsertRec(fh, (char *)&recBuf, rid)) ||
-			(rc = rid.GetPageNum(pageNum)) ||
-			(rc = rid.GetSlotNum(slotNum)))
-			return (rc);
+    printf("\nadding %d records\n", numRecs);
+    for (i = 0; i < numRecs; i++) {
+        memset(recBuf.str, ' ', STRLEN);
+        sprintf(recBuf.str, "a%d", i);
+        recBuf.num = i;
+        recBuf.r = (float)i;
+        if ((rc = InsertRec(fh, (char *)&recBuf, rid)) ||
+            (rc = rid.GetPageNum(pageNum)) ||
+            (rc = rid.GetSlotNum(slotNum)))
+            return (rc);
 
-		if ((i + 1) % PROG_UNIT == 0){
-			printf("%d  ", i + 1);
-			fflush(stdout);
-		}
-	}
-	if (i % PROG_UNIT != 0)
-		printf("%d\n", i);
-	else
-		putchar('\n');
+        if ((i + 1) % PROG_UNIT == 0){
+            printf("%d  ", i + 1);
+            fflush(stdout);
+        }
+    }
+    if (i % PROG_UNIT != 0)
+        printf("%d\n", i);
+    else
+        putchar('\n');
 
-	printf("Page/Slot: %d %d\n", pageNum, slotNum);
+    printf("Page/Slot: %d %d\n", pageNum, slotNum);
 
-	// Return ok
-	return (0);
+    // Return ok
+    return (0);
 }
 
 //
@@ -263,74 +263,74 @@ RC AddRecs(RM_FileHandle &fh, int numRecs)
 //
 RC VerifyFile(RM_FileHandle &fh, int numRecs)
 {
-	RC        rc;
-	int       n;
-	TestRec   *pRecBuf;
-	RID       rid;
-	char      stringBuf[STRLEN];
-	char      *found;
-	RM_Record rec;
+    RC        rc;
+    int       n;
+    TestRec   *pRecBuf;
+    RID       rid;
+    char      stringBuf[STRLEN];
+    char      *found;
+    RM_Record rec;
 
-	found = new char[numRecs];
-	memset(found, 0, numRecs);
+    found = new char[numRecs];
+    memset(found, 0, numRecs);
 
-	printf("\nverifying file contents\n");
+    printf("\nverifying file contents\n");
 
-	RM_FileScan fs;
-	if ((rc=fs.OpenScan(fh,INT,sizeof(int),offsetof(TestRec, num),
-						NO_OP, NULL, NO_HINT)))
-		return (rc);
+    RM_FileScan fs;
+    if ((rc=fs.OpenScan(fh,INT,sizeof(int),offsetof(TestRec, num),
+                        NO_OP, NULL, NO_HINT)))
+        return (rc);
 
-	// For each record in the file
-	for (rc = GetNextRecScan(fs, rec), n = 0;
-		 rc == 0;
-		 rc = GetNextRecScan(fs, rec), n++) {
+    // For each record in the file
+    for (rc = GetNextRecScan(fs, rec), n = 0;
+         rc == 0;
+         rc = GetNextRecScan(fs, rec), n++) {
 
-		// Make sure the record is correct
-		if ((rc = rec.GetData((char *&)pRecBuf)) ||
-			(rc = rec.GetRid(rid)))
-			goto err;
+        // Make sure the record is correct
+        if ((rc = rec.GetData((char *&)pRecBuf)) ||
+            (rc = rec.GetRid(rid)))
+            goto err;
 
-		memset(stringBuf,' ', STRLEN);
-		sprintf(stringBuf, "a%d", pRecBuf->num);
+        memset(stringBuf,' ', STRLEN);
+        sprintf(stringBuf, "a%d", pRecBuf->num);
 
-		if (pRecBuf->num < 0 || pRecBuf->num >= numRecs ||
-			strcmp(pRecBuf->str, stringBuf) ||
-			pRecBuf->r != (float)pRecBuf->num) {
-			printf("VerifyFile: invalid record = [%s, %d, %f]\n",
-				   pRecBuf->str, pRecBuf->num, pRecBuf->r);
-			exit(1);
-		}
+        if (pRecBuf->num < 0 || pRecBuf->num >= numRecs ||
+            strcmp(pRecBuf->str, stringBuf) ||
+            pRecBuf->r != (float)pRecBuf->num) {
+            printf("VerifyFile: invalid record = [%s, %d, %f]\n",
+                   pRecBuf->str, pRecBuf->num, pRecBuf->r);
+            exit(1);
+        }
 
-		if (found[pRecBuf->num]) {
-			printf("VerifyFile: duplicate record = [%s, %d, %f]\n",
-				   pRecBuf->str, pRecBuf->num, pRecBuf->r);
-			exit(1);
-		}
+        if (found[pRecBuf->num]) {
+            printf("VerifyFile: duplicate record = [%s, %d, %f]\n",
+                   pRecBuf->str, pRecBuf->num, pRecBuf->r);
+            exit(1);
+        }
 
-		found[pRecBuf->num] = 1;
-	}
+        found[pRecBuf->num] = 1;
+    }
 
-	if (rc != RM_EOF)
-		goto err;
+    if (rc != RM_EOF)
+        goto err;
 
-	if ((rc=fs.CloseScan()))
-		return (rc);
+    if ((rc=fs.CloseScan()))
+        return (rc);
 
-	// make sure we had the right number of records in the file
-	if (n != numRecs) {
-		printf("%d records in file (supposed to be %d)\n",
-			   n, numRecs);
-		exit(1);
-	}
+    // make sure we had the right number of records in the file
+    if (n != numRecs) {
+        printf("%d records in file (supposed to be %d)\n",
+               n, numRecs);
+        exit(1);
+    }
 
-	// Return ok
-	rc = 0;
+    // Return ok
+    rc = 0;
 
 err:
-	fs.CloseScan();
-	delete[] found;
-	return (rc);
+    fs.CloseScan();
+    delete[] found;
+    return (rc);
 }
 
 //
@@ -340,35 +340,35 @@ err:
 //
 RC PrintFile(RM_FileScan &fs)
 {
-	RC        rc;
-	int       n;
-	TestRec   *pRecBuf;
-	RID       rid;
-	RM_Record rec;
+    RC        rc;
+    int       n;
+    TestRec   *pRecBuf;
+    RID       rid;
+    RM_Record rec;
 
-	printf("\nprinting file contents\n");
+    printf("\nprinting file contents\n");
 
-	// for each record in the file
-	for (rc = GetNextRecScan(fs, rec), n = 0;
-		 rc == 0;
-		 rc = GetNextRecScan(fs, rec), n++) {
+    // for each record in the file
+    for (rc = GetNextRecScan(fs, rec), n = 0;
+         rc == 0;
+         rc = GetNextRecScan(fs, rec), n++) {
 
-		// Get the record data and record id
-		if ((rc = rec.GetData((char *&)pRecBuf)) ||
-			(rc = rec.GetRid(rid)))
-			return (rc);
+        // Get the record data and record id
+        if ((rc = rec.GetData((char *&)pRecBuf)) ||
+            (rc = rec.GetRid(rid)))
+            return (rc);
 
-		// Print the record contents
-		PrintRecord(*pRecBuf);
-	}
+        // Print the record contents
+        PrintRecord(*pRecBuf);
+    }
 
-	if (rc != RM_EOF)
-		return (rc);
+    if (rc != RM_EOF)
+        return (rc);
 
-	printf("%d records found\n", n);
+    printf("%d records found\n", n);
 
-	// Return ok
-	return (0);
+    // Return ok
+    return (0);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -384,8 +384,8 @@ RC PrintFile(RM_FileScan &fs)
 //
 RC CreateFile(char *fileName, int recordSize)
 {
-	printf("\ncreating %s\n", fileName);
-	return (rmm.CreateFile(fileName, recordSize));
+    printf("\ncreating %s\n", fileName);
+    return (rmm.CreateFile(fileName, recordSize));
 }
 
 //
@@ -395,8 +395,8 @@ RC CreateFile(char *fileName, int recordSize)
 //
 RC DestroyFile(char *fileName)
 {
-	printf("\ndestroying %s\n", fileName);
-	return (rmm.DestroyFile(fileName));
+    printf("\ndestroying %s\n", fileName);
+    return (rmm.DestroyFile(fileName));
 }
 
 //
@@ -406,8 +406,8 @@ RC DestroyFile(char *fileName)
 //
 RC OpenFile(char *fileName, RM_FileHandle &fh)
 {
-	printf("\nopening %s\n", fileName);
-	return (rmm.OpenFile(fileName, fh));
+    printf("\nopening %s\n", fileName);
+    return (rmm.OpenFile(fileName, fh));
 }
 
 //
@@ -417,9 +417,9 @@ RC OpenFile(char *fileName, RM_FileHandle &fh)
 //
 RC CloseFile(char *fileName, RM_FileHandle &fh)
 {
-	if (fileName != NULL)
-		printf("\nClosing %s\n", fileName);
-	return (rmm.CloseFile(fh));
+    if (fileName != NULL)
+        printf("\nClosing %s\n", fileName);
+    return (rmm.CloseFile(fh));
 }
 
 //
@@ -429,7 +429,7 @@ RC CloseFile(char *fileName, RM_FileHandle &fh)
 //
 RC InsertRec(RM_FileHandle &fh, char *record, RID &rid)
 {
-	return (fh.InsertRec(record, rid));
+    return (fh.InsertRec(record, rid));
 }
 
 //
@@ -439,7 +439,7 @@ RC InsertRec(RM_FileHandle &fh, char *record, RID &rid)
 //
 RC DeleteRec(RM_FileHandle &fh, RID &rid)
 {
-	return (fh.DeleteRec(rid));
+    return (fh.DeleteRec(rid));
 }
 
 //
@@ -449,7 +449,7 @@ RC DeleteRec(RM_FileHandle &fh, RID &rid)
 //
 RC UpdateRec(RM_FileHandle &fh, RM_Record &rec)
 {
-	return (fh.UpdateRec(rec));
+    return (fh.UpdateRec(rec));
 }
 
 //
@@ -459,34 +459,34 @@ RC UpdateRec(RM_FileHandle &fh, RM_Record &rec)
 //
 RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec)
 {
-	return (fs.GetNextRec(rec));
+    return (fs.GetNextRec(rec));
 }
 
 RC GetLastPositionOccupied(RM_FileHandle &fh, PageNum *pageNum, SlotNum *slotNum) {
-	RM_Record rec;
-	RM_FileScan sc;
-	RID rid;
+    RM_Record rec;
+    RM_FileScan sc;
+    RID rid;
 
-	TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
+    TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
 
-	*pageNum = 0, *slotNum = 0;
+    *pageNum = 0, *slotNum = 0;
 
-	for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
-		if (rc) {
-			return rc;
-		}
-		TRY(rec.GetRid(rid));
-		PageNum x;
-		SlotNum y;
-		rid.GetPageNum(x);
-		rid.GetSlotNum(y);
-		if (*pageNum < x || (*pageNum == x && *slotNum < y)) {
-			*pageNum = x;
-			*slotNum = y;
-		}
-	}
+    for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
+        if (rc) {
+            return rc;
+        }
+        TRY(rec.GetRid(rid));
+        PageNum x;
+        SlotNum y;
+        rid.GetPageNum(x);
+        rid.GetSlotNum(y);
+        if (*pageNum < x || (*pageNum == x && *slotNum < y)) {
+            *pageNum = x;
+            *slotNum = y;
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -498,23 +498,23 @@ RC GetLastPositionOccupied(RM_FileHandle &fh, PageNum *pageNum, SlotNum *slotNum
 //
 RC Test1(void)
 {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test1 starting ****************\n");
+    printf("test1 starting ****************\n");
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = CloseFile((char *)FILENAME, fh)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = CloseFile((char *)FILENAME, fh)))
+        return (rc);
 
-	LsFile((char *)FILENAME);
+    LsFile((char *)FILENAME);
 
-	if ((rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest1 done ********************\n");
-	return (0);
+    printf("\ntest1 done ********************\n");
+    return (0);
 }
 
 //
@@ -522,25 +522,25 @@ RC Test1(void)
 //
 RC Test2(void)
 {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test2 starting ****************\n");
+    printf("test2 starting ****************\n");
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, FEW_RECS)) ||
-		(rc = VerifyFile(fh, FEW_RECS)) ||
-		(rc = CloseFile((char *)FILENAME, fh)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)) ||
+        (rc = CloseFile((char *)FILENAME, fh)))
+        return (rc);
 
-	LsFile((char *)FILENAME);
+    LsFile((char *)FILENAME);
 
-	if ((rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest2 done ********************\n");
-	return (0);
+    printf("\ntest2 done ********************\n");
+    return (0);
 }
 
 //
@@ -548,25 +548,25 @@ RC Test2(void)
 //
 RC Test3(void)
 {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test3 starting ****************\n");
+    printf("test3 starting ****************\n");
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, LOTS_OF_RECS)) ||
-		(rc = VerifyFile(fh, LOTS_OF_RECS)) ||
-		(rc = CloseFile((char *)FILENAME, fh)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, LOTS_OF_RECS)) ||
+        (rc = VerifyFile(fh, LOTS_OF_RECS)) ||
+        (rc = CloseFile((char *)FILENAME, fh)))
+        return (rc);
 
-	LsFile((char *)FILENAME);
+    LsFile((char *)FILENAME);
 
-	if ((rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest3 done ********************\n");
-	return (0);
+    printf("\ntest3 done ********************\n");
+    return (0);
 }
 
 //
@@ -574,262 +574,262 @@ RC Test3(void)
 //
 RC Test4(void)
 {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test4 starting ****************\n");
+    printf("test4 starting ****************\n");
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, FEW_RECS)) ||
-		(rc = VerifyFile(fh, FEW_RECS)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)))
+        return (rc);
 
-	int numComp = 10;
-	RM_FileScan scan;
-	printf("scanning records whose num <= %d\n", numComp);
-	TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
-				LT_OP, (void*)&numComp));
-	{
-		int rc, n = 0;
-		RM_Record rec;
-		while (true) {
-			rc = scan.GetNextRec(rec);
-			if (rc == RM_EOF) {
-				break;
-			} else if (rc != 0) {
-				return rc;
-			}
-			++n;
-			char* data;
-			rec.GetData(data);
-			assert(((TestRec *)data)->num < numComp);
-		}
-		printf("%d records found.\n", n);
-		assert(n == numComp);
-	}
+    int numComp = 10;
+    RM_FileScan scan;
+    printf("scanning records whose num <= %d\n", numComp);
+    TRY(scan.OpenScan(fh, INT, sizeof(int), offsetof(TestRec, num),
+                LT_OP, (void*)&numComp));
+    {
+        int rc, n = 0;
+        RM_Record rec;
+        while (true) {
+            rc = scan.GetNextRec(rec);
+            if (rc == RM_EOF) {
+                break;
+            } else if (rc != 0) {
+                return rc;
+            }
+            ++n;
+            char* data;
+            rec.GetData(data);
+            assert(((TestRec *)data)->num < numComp);
+        }
+        printf("%d records found.\n", n);
+        assert(n == numComp);
+    }
 
-	if ((rc = CloseFile((char *)FILENAME, fh)) ||
-		(rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest4 done ********************\n");
-	return (0);
+    printf("\ntest4 done ********************\n");
+    return (0);
 }
 
 //
 // Test5 tests updating some records
 //
 RC Test5(void) {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test5 starting ****************\n");
+    printf("test5 starting ****************\n");
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, FEW_RECS)) ||
-		(rc = VerifyFile(fh, FEW_RECS)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)))
+        return (rc);
 
-	RM_Record rec;
-	RM_FileScan sc;
+    RM_Record rec;
+    RM_FileScan sc;
 
-	TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
-	for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
-		if (rc) {
-			return rc;
-		}
-		TestRec* data;
-		rec.GetData(CVOID(data));
-		data->num++;
-		TRY(fh.UpdateRec(rec));
-	}
-	TRY(sc.CloseScan());
+    TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
+    for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
+        if (rc) {
+            return rc;
+        }
+        TestRec* data;
+        rec.GetData(CVOID(data));
+        data->num++;
+        TRY(fh.UpdateRec(rec));
+    }
+    TRY(sc.CloseScan());
 
-	TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
-	for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
-		if (rc) {
-			return rc;
-		}
-		TestRec* data;
-		rec.GetData(CVOID(data));
-		int old_num;
-		sscanf(data->str, "a%d", &old_num);
-		assert(old_num + 1 == data->num);
-	}
-	TRY(sc.CloseScan());
+    TRY(sc.OpenScan(fh, INT, sizeof(int), 0, NO_OP, NULL));
+    for (rc = sc.GetNextRec(rec); rc != RM_EOF; rc = sc.GetNextRec(rec)) {
+        if (rc) {
+            return rc;
+        }
+        TestRec* data;
+        rec.GetData(CVOID(data));
+        int old_num;
+        sscanf(data->str, "a%d", &old_num);
+        assert(old_num + 1 == data->num);
+    }
+    TRY(sc.CloseScan());
 
-	if ((rc = CloseFile((char *)FILENAME, fh)) ||
-		(rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest5 done ********************\n");
-	return (0);
+    printf("\ntest5 done ********************\n");
+    return (0);
 }
 
 //
 // Test6 tests deleting
 //
 RC Test6(void) {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	printf("test6 starting ****************\n");
+    printf("test6 starting ****************\n");
 
-	int m = 100;
+    int m = 100;
 
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, m)) ||
-		(rc = VerifyFile(fh, m)))
-		return (rc);
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, m)) ||
+        (rc = VerifyFile(fh, m)))
+        return (rc);
 
-	RM_Record rec;
-	RM_FileScan sc;
+    RM_Record rec;
+    RM_FileScan sc;
 
-	char searchStr[] = {"a8"};
+    char searchStr[] = {"a8"};
 
-	TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
-				EQ_OP, searchStr));
-	while (rc = sc.GetNextRec(rec), rc != RM_EOF) {
-		if (rc) {
-			return rc;
-		}
-		TestRec* data;
-		rec.GetData(CVOID(data));
-		PrintRecord(*data);
-	}
-	TRY(sc.CloseScan());
+    TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
+                EQ_OP, searchStr));
+    while (rc = sc.GetNextRec(rec), rc != RM_EOF) {
+        if (rc) {
+            return rc;
+        }
+        TestRec* data;
+        rec.GetData(CVOID(data));
+        PrintRecord(*data);
+    }
+    TRY(sc.CloseScan());
 
-	TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
-				EQ_OP, searchStr));
-	TRY(sc.GetNextRec(rec));
-	assert(sc.GetNextRec(rec) == RM_EOF);
-	TRY(sc.CloseScan());
+    TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
+                EQ_OP, searchStr));
+    TRY(sc.GetNextRec(rec));
+    assert(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
 
-	RID rid;
-	TRY(rec.GetRid(rid));
-	TRY(fh.DeleteRec(rid));
+    RID rid;
+    TRY(rec.GetRid(rid));
+    TRY(fh.DeleteRec(rid));
 
-	TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
-			EQ_OP, searchStr));
-	assert(sc.GetNextRec(rec) == RM_EOF);
-	TRY(sc.CloseScan());
+    TRY(sc.OpenScan(fh, STRING, strlen(searchStr), offsetof(TestRec, str),
+            EQ_OP, searchStr));
+    assert(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
 
-	if ((rc = CloseFile((char *)FILENAME, fh)) ||
-		(rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	printf("\ntest6 done ********************\n");
-	return (0);
+    printf("\ntest6 done ********************\n");
+    return (0);
 }
 
 //
 // Test7 tests reusing space of deleted records
 //
 RC Test7(void) {
-	RC            rc;
-	RM_FileHandle fh;
+    RC            rc;
+    RM_FileHandle fh;
 
-	LOG(INFO) << "test7 starting ****************";
+    LOG(INFO) << "test7 starting ****************";
 
-	int recsPerPage = 99; // calculated records per page; this might change
-	int pages = 5;
-	int recsToDel = 100;
+    int recsPerPage = 99; // calculated records per page; this might change
+    int pages = 5;
+    int recsToDel = 100;
 
-	int n = recsPerPage * pages;
+    int n = recsPerPage * pages;
 
-	LOG(INFO) << "Insert records of " << pages << " pages, total " << n;
-	if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
-		(rc = OpenFile((char *)FILENAME, fh)) ||
-		(rc = AddRecs(fh, n)) ||
-		(rc = VerifyFile(fh, n)))
-		return (rc);
+    LOG(INFO) << "Insert records of " << pages << " pages, total " << n;
+    if ((rc = CreateFile((char *)FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile((char *)FILENAME, fh)) ||
+        (rc = AddRecs(fh, n)) ||
+        (rc = VerifyFile(fh, n)))
+        return (rc);
 
-	PageNum x;
-	SlotNum y;
+    PageNum x;
+    SlotNum y;
 
-	GetLastPositionOccupied(fh, &x, &y);
-	LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
-	assert(x == pages);
+    GetLastPositionOccupied(fh, &x, &y);
+    LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
+    assert(x == pages);
 
-	RM_Record rec;
-	RM_FileScan sc;
-	RID rid;
+    RM_Record rec;
+    RM_FileScan sc;
+    RID rid;
 
-	LOG(INFO) << "Delete first " << recsToDel << " records";
-	TRY(sc.OpenScan(fh, INT, sizeof(INT), offsetof(TestRec, num), LT_OP, &recsToDel));
-	int count = 0;
-	for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
-		if (rc) {
-			return rc;
-		}
-		TRY(rec.GetRid(rid));
-		TRY(fh.DeleteRec(rid));
-		++count;
-	}
-	assert(count == recsToDel);
-	TRY(sc.CloseScan());
+    LOG(INFO) << "Delete first " << recsToDel << " records";
+    TRY(sc.OpenScan(fh, INT, sizeof(INT), offsetof(TestRec, num), LT_OP, &recsToDel));
+    int count = 0;
+    for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
+        if (rc) {
+            return rc;
+        }
+        TRY(rec.GetRid(rid));
+        TRY(fh.DeleteRec(rid));
+        ++count;
+    }
+    assert(count == recsToDel);
+    TRY(sc.CloseScan());
 
-	GetLastPositionOccupied(fh, &x, &y);
-	LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
-	assert(x == pages);
+    GetLastPositionOccupied(fh, &x, &y);
+    LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
+    assert(x == pages);
 
-	LOG(INFO) << "Insert another " << recsToDel << " records";
-	for (int i = 0; i < recsToDel; ++i) {
-		TestRec tr;
-		memset(tr.str, 0, sizeof(tr.str));
-		sprintf(tr.str, "n%d", i);
-		tr.num = i;
-		tr.r = (float)i;
-		TRY(fh.InsertRec((char*)&tr, rid));
-	}
+    LOG(INFO) << "Insert another " << recsToDel << " records";
+    for (int i = 0; i < recsToDel; ++i) {
+        TestRec tr;
+        memset(tr.str, 0, sizeof(tr.str));
+        sprintf(tr.str, "n%d", i);
+        tr.num = i;
+        tr.r = (float)i;
+        TRY(fh.InsertRec((char*)&tr, rid));
+    }
 
-	// the page used should not change
-	GetLastPositionOccupied(fh, &x, &y);
-	LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
-	assert(x == pages);
+    // the page used should not change
+    GetLastPositionOccupied(fh, &x, &y);
+    LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
+    assert(x == pages);
 
-	int firstIndexDeleted = n - recsToDel;
+    int firstIndexDeleted = n - recsToDel;
 
-	LOG(INFO) << "Delete last " << recsToDel << " records";
-	TRY(sc.OpenScan(fh, INT, sizeof(INT), offsetof(TestRec, num), GE_OP, &firstIndexDeleted));
-	count = 0;
-	for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
-		if (rc) {
-			return rc;
-		}
-		TRY(rec.GetRid(rid));
-		TRY(fh.DeleteRec(rid));
-		++count;
-	}
-	assert(count == recsToDel);
-	TRY(sc.CloseScan());
+    LOG(INFO) << "Delete last " << recsToDel << " records";
+    TRY(sc.OpenScan(fh, INT, sizeof(INT), offsetof(TestRec, num), GE_OP, &firstIndexDeleted));
+    count = 0;
+    for (RC rc; rc = sc.GetNextRec(rec), rc != RM_EOF; ) {
+        if (rc) {
+            return rc;
+        }
+        TRY(rec.GetRid(rid));
+        TRY(fh.DeleteRec(rid));
+        ++count;
+    }
+    assert(count == recsToDel);
+    TRY(sc.CloseScan());
 
-	GetLastPositionOccupied(fh, &x, &y);
-	LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
+    GetLastPositionOccupied(fh, &x, &y);
+    LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
 
-	LOG(INFO) << "Insert another " << recsToDel << " records";
-	for (int i = 0; i < recsToDel; ++i) {
-		TestRec tr;
-		memset(tr.str, 0, sizeof(tr.str));
-		sprintf(tr.str, "m%d", i);
-		tr.num = i;
-		tr.r = (float)i;
-		TRY(fh.InsertRec((char*)&tr, rid));
-	}
+    LOG(INFO) << "Insert another " << recsToDel << " records";
+    for (int i = 0; i < recsToDel; ++i) {
+        TestRec tr;
+        memset(tr.str, 0, sizeof(tr.str));
+        sprintf(tr.str, "m%d", i);
+        tr.num = i;
+        tr.r = (float)i;
+        TRY(fh.InsertRec((char*)&tr, rid));
+    }
 
-	// the page used should not change
-	GetLastPositionOccupied(fh, &x, &y);
-	LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
-	assert(x == pages);
+    // the page used should not change
+    GetLastPositionOccupied(fh, &x, &y);
+    LOG(INFO) << "Last position occupied = (" << x << ", " << y << ")";
+    assert(x == pages);
 
-	if ((rc = CloseFile((char *)FILENAME, fh)) ||
-		(rc = DestroyFile((char *)FILENAME)))
-		return (rc);
+    if ((rc = CloseFile((char *)FILENAME, fh)) ||
+        (rc = DestroyFile((char *)FILENAME)))
+        return (rc);
 
-	LOG(INFO) << "test7 done ****************";
-	return (0);
+    LOG(INFO) << "test7 done ****************";
+    return (0);
 }
 

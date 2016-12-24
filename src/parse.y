@@ -95,6 +95,18 @@ QL_Manager *pQlm;          // QL component manager
       RW_AND
       RW_INTO
       RW_VALUES
+      RW_DATABASE
+      RW_DATABASES
+      RW_TABLES
+      RW_SHOW
+      RW_USE
+      RW_PRIMARY
+      RW_KEY
+      RW_NOT
+      RW_NULL
+      RW_IS
+      RW_INT
+      RW_DESC
       T_EQ
       T_LT
       T_LE

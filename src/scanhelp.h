@@ -140,6 +140,34 @@ static int get_id(char *s) {
 	if (!strcmp(string, "off"))
 		return yylval.ival = RW_OFF;
 
+	/* newly added lexems */
+
+	if (!strcmp(string, "database"))
+		return yylval.ival = RW_DATABASE;
+	if (!strcmp(string, "databases"))
+		return yylval.ival = RW_DATABASES;
+	if (!strcmp(string, "tables"))
+		return yylval.ival = RW_TABLES;
+	if (!strcmp(string, "show"))
+		return yylval.ival = RW_SHOW;
+	if (!strcmp(string, "use"))
+		return yylval.ival = RW_USE;
+	if (!strcmp(string, "primary"))
+		return yylval.ival = RW_PRIMARY;
+	if (!strcmp(string, "key"))
+		return yylval.ival = RW_KEY;
+	if (!strcmp(string, "not"))
+		return yylval.ival = RW_NOT;
+	if (!strcmp(string, "null"))
+		return yylval.ival = RW_NULL;
+	if (!strcmp(string, "is"))
+		return yylval.ival = RW_IS;
+	if (!strcmp(string, "int"))
+		return yylval.ival = RW_INT;
+	if (!strcmp(string, "desc"))
+		return yylval.ival = RW_DESC;
+
+
 	/*  unresolved lexemes are strings */
 
 	yylval.sval = mk_string(s, len);

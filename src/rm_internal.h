@@ -12,14 +12,21 @@ struct RM_PageHeader {
     short firstFreeRecord;
     short allocatedRecords;
     int nextFreePage;
-    unsigned char occupiedBitMap[1];
+    unsigned char bitmap[1];
 };
 
 struct RM_FileHeader {
     short recordSize;
     short recordsPerPage;
+    short nullableNum;
     int firstFreePage;
+    short nullableOffsets[1];
 };
+
+template <int N, class T>
+inline T upper_align(T x) {
+    return (x + (N - 1)) & ~((unsigned)(N - 1));
+}
 
 inline bool getBitMap(unsigned char *bitMap, int pos) {
     return (bool)(bitMap[pos >> 3] >> (pos & 0x7) & 1);

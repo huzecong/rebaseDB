@@ -64,15 +64,21 @@ class RM_FileHandle {
     short recordsPerPage;
     int firstFreePage;
     short pageHeaderSize;
+
+    short nullableNum;
+    short* nullableOffsets;
+
     bool isHeaderDirty;
 public:
     RM_FileHandle ();
     ~RM_FileHandle();
 
     // Given a RID, return the record
-    RC GetRec     (const RID &rid, RM_Record &rec) const;
+    //   `isnull' gives the information for each nullable fields
+    RC GetRec     (const RID &rid, RM_Record &rec, bool *isnull = NULL) const;
 
-    RC InsertRec  (const char *pData, RID &rid);       // Insert a new record
+    // Insert a new record
+    RC InsertRec  (const char *pData, RID &rid, bool *isnull = NULL);
 
     RC DeleteRec  (const RID &rid);                    // Delete a record
     RC UpdateRec  (const RM_Record &rec);              // Update a record
@@ -102,8 +108,9 @@ class RM_FileScan {
     PageNum currentPageNum;
     SlotNum currentSlotNum;
     short recordSize;
+    int nullableIndex;
 
-    bool checkSatisfy(char *data);
+    bool checkSatisfy(char *data, bool isnull);
 public:
     RM_FileScan  ();
     ~RM_FileScan ();
@@ -128,7 +135,8 @@ public:
     RM_Manager    (PF_Manager &pfm);
     ~RM_Manager   ();
 
-    RC CreateFile (const char *fileName, int recordSize);
+    RC CreateFile (const char *fileName, int recordSize,
+            short nullableNum = 0, short *nullableOffsets = NULL);
     RC DestroyFile(const char *fileName);
     RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
 

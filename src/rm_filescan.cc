@@ -40,12 +40,24 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
         }
     }
 
-    char *data;
+    RM_FileHeader *fileHeader;
     PF_PageHandle pageHandle;
     scanOpened = true;
     TRY(fileHandle.pfHandle.GetFirstPage(pageHandle));
-    TRY(pageHandle.GetData(data));
-    recordSize = ((RM_FileHeader *)data)->recordSize;
+    TRY(pageHandle.GetData(CVOID(fileHeader)));
+    recordSize = fileHeader->recordSize;
+    nullableIndex = -1;
+    int nullableNum = fileHeader->nullableNum;
+    for (int i = 0; i < nullableNum; ++i) {
+        if (fileHeader->nullableOffsets[i] == attrOffset) {
+            VLOG(1) << "nullableIndex = " << i;
+            nullableIndex = i;
+            break;
+        }
+    }
+    if (nullableIndex == -1) {
+        VLOG(1) << "given offset was not found to be a nullable field.";
+    }
     currentPageNum = 1;
     currentSlotNum = 0;
     TRY(fileHandle.pfHandle.UnpinPage(0));
@@ -63,11 +75,17 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
     while (true) {
         TRY(pageHandle.GetData(data));
         int cnt = ((RM_PageHeader *)data)->allocatedRecords;
-        unsigned char *bitMap = ((RM_PageHeader *)data)->occupiedBitMap;
+        unsigned char *bitMap = ((RM_PageHeader *)data)->bitmap;
         for (; currentSlotNum < cnt; ++currentSlotNum) {
             if (getBitMap(bitMap, currentSlotNum) == 0) continue;
             char *pData = data + fileHandle->pageHeaderSize + recordSize * currentSlotNum;
-            if (checkSatisfy(pData)) {
+            bool isnull = false;
+            if (nullableIndex != -1) {
+                isnull = getBitMap(((RM_PageHeader *)data)->bitmap,
+                        fileHandle->recordsPerPage +
+                        currentSlotNum * fileHandle->nullableNum + nullableIndex);
+            }
+            if (checkSatisfy(pData, isnull)) {
                 found = true;
                 break;
             }
@@ -96,7 +114,13 @@ RC RM_FileScan::CloseScan() {
     return 0;
 }
 
-bool RM_FileScan::checkSatisfy(char *data) {
+bool RM_FileScan::checkSatisfy(char *data, bool isnull) {
+    if (compOp == ISNULL_OP) {
+        return isnull;
+    }
+    if (compOp == NOTNULL_OP) {
+        return !isnull;
+    }
     switch (attrType) {
         case INT: {
             int curVal = *(int *)(data + attrOffset);
@@ -115,6 +139,8 @@ bool RM_FileScan::checkSatisfy(char *data) {
                     return curVal <= value.intVal;
                 case GE_OP:
                     return curVal >= value.intVal;
+                default:
+                    CHECK(false);
             }
         }
         case FLOAT: {
@@ -134,6 +160,8 @@ bool RM_FileScan::checkSatisfy(char *data) {
                     return curVal <= value.floatVal;
                 case GE_OP:
                     return curVal >= value.floatVal;
+                default:
+                    CHECK(false);
             }
         }
         case STRING: {
@@ -153,6 +181,8 @@ bool RM_FileScan::checkSatisfy(char *data) {
                     return strcmp(curVal, value.stringVal) <= 0;
                 case GE_OP:
                     return strcmp(curVal, value.stringVal) >= 0;
+                default:
+                    CHECK(false);
             }
         }
     }

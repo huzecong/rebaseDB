@@ -15,33 +15,48 @@ RM_Manager::RM_Manager(PF_Manager &pfm) {
 
 RM_Manager::~RM_Manager() {}
 
-RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
+RC RM_Manager::CreateFile(const char *fileName, int recordSize,
+        short nullableNum, short *nullableOffsets) {
     if (recordSize > PF_PAGE_SIZE) {
+        return RM_RECORDSIZE_TOO_LARGE;
+    }
+    if (sizeof(RM_PageHeader) + nullableNum * sizeof(short) > PF_PAGE_SIZE) {
         return RM_RECORDSIZE_TOO_LARGE;
     }
     pfm->CreateFile(fileName);
     // initialize header
     PF_FileHandle fileHandle;
     PF_PageHandle pageHandle;
-    char *data;
+    RM_FileHeader *fileHeader;
+    RM_PageHeader *pageHeader;
     TRY(pfm->OpenFile(fileName, fileHandle));
     TRY(fileHandle.AllocatePage(pageHandle));
-    TRY(pageHandle.GetData(data));
+    TRY(pageHandle.GetData(CVOID(fileHeader)));
 
-    short recordsPerPage = (PF_PAGE_SIZE - sizeof(RM_PageHeader)) / (recordSize + 1);
-    if (((recordsPerPage + 3) & (~0x3)) + sizeof(RM_PageHeader) +
-            recordSize * recordsPerPage > PF_PAGE_SIZE)
+    // total size = sizeof PageHeader + bitmap[ = records * (1 + nullable)] +
+    //   records * recordSize
+    short recordsPerPage = (PF_PAGE_SIZE - sizeof(RM_PageHeader)) /
+            (recordSize + nullableNum + 1);
+    if (upper_align<4>(recordsPerPage * (nullableNum + 1)) +
+            sizeof(RM_PageHeader) + recordSize * recordsPerPage > PF_PAGE_SIZE)
         --recordsPerPage;
-    *(RM_FileHeader *)data = {(short)recordSize, recordsPerPage, kLastFreePage};
+    fileHeader->recordSize = recordSize;
+    fileHeader->recordsPerPage = recordsPerPage;
+    fileHeader->nullableNum = nullableNum;
+    fileHeader->firstFreePage = kLastFreePage;
+    for (int i = 0; i < nullableNum; ++i) {
+        fileHeader->nullableOffsets[i] = nullableOffsets[i];
+    }
 
     TRY(fileHandle.MarkDirty(0));
     TRY(fileHandle.UnpinPage(0));
 
     TRY(fileHandle.AllocatePage(pageHandle));
-    TRY(pageHandle.GetData(data));
+    TRY(pageHandle.GetData(CVOID(pageHeader)));
 
-    *(RM_PageHeader *)data = {kLastFreeRecord, 0, kLastFreePage};
-    memset(data + offsetof(RM_PageHeader, occupiedBitMap), 0, recordsPerPage);
+    *pageHeader = {kLastFreeRecord, 0, kLastFreePage};
+    memset(pageHeader + offsetof(RM_PageHeader, bitmap), 0,
+            recordsPerPage * (nullableNum + 1));
 
     TRY(fileHandle.MarkDirty(1));
     TRY(fileHandle.UnpinPage(1));
@@ -60,15 +75,21 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
     TRY(pfm->OpenFile(fileName, pfHandle));
     fileHandle.pfHandle = pfHandle;
     PF_PageHandle pageHandle;
-    char *data;
+    RM_FileHeader *data;
     TRY(pfHandle.GetFirstPage(pageHandle));
-    TRY(pageHandle.GetData(data));
+    TRY(pageHandle.GetData(CVOID(data)));
 
-    fileHandle.recordSize = ((RM_FileHeader *)data)->recordSize;
-    fileHandle.recordsPerPage = ((RM_FileHeader *)data)->recordsPerPage;
-    fileHandle.firstFreePage = ((RM_FileHeader *)data)->firstFreePage;
+    fileHandle.recordSize = data->recordSize;
+    fileHandle.recordsPerPage = data->recordsPerPage;
+    fileHandle.nullableNum = data->nullableNum;
+    fileHandle.nullableOffsets = new short[data->nullableNum];
+    for (int i = 0; i < data->nullableNum; ++i) {
+        fileHandle.nullableOffsets[i] = data->nullableOffsets[i];
+    }
+    fileHandle.firstFreePage = data->firstFreePage;
     fileHandle.isHeaderDirty = false;
-    fileHandle.pageHeaderSize = sizeof(RM_PageHeader) + ((fileHandle.recordsPerPage + 3) & (~0x3));
+    fileHandle.pageHeaderSize = sizeof(RM_PageHeader) + upper_align<4>(
+            data->recordsPerPage * (1 + data->nullableNum));
 
     TRY(pfHandle.UnpinPage(0));
     return 0;
@@ -77,13 +98,19 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
 RC RM_Manager::CloseFile(RM_FileHandle &fileHandle) {
     if (fileHandle.isHeaderDirty) {
         PF_PageHandle pageHandle;
-        char *data;
+        RM_FileHeader *header;
         TRY(fileHandle.pfHandle.GetFirstPage(pageHandle));
-        TRY(pageHandle.GetData(data));
+        TRY(pageHandle.GetData(CVOID(header)));
 
-        *(RM_FileHeader *)data = {fileHandle.recordSize,
-                                  fileHandle.recordsPerPage,
-                                  fileHandle.firstFreePage};
+        header->recordSize = fileHandle.recordSize;
+        header->recordsPerPage = fileHandle.recordsPerPage;
+        header->nullableNum = fileHandle.nullableNum;
+        header->firstFreePage = fileHandle.firstFreePage;
+        for (int i = 0; i < fileHandle.nullableNum; ++i) {
+            header->nullableOffsets[i] = fileHandle.nullableOffsets[i];
+        }
+        delete [] fileHandle.nullableOffsets;
+
         TRY(fileHandle.pfHandle.MarkDirty(0));
         TRY(fileHandle.pfHandle.UnpinPage(0));
     }

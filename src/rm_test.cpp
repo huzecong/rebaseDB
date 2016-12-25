@@ -54,6 +54,19 @@ struct TestRec {
     float r;
 };
 
+struct NRec {
+    int num; // non-nullable int
+    char nstr[STRLEN]; // nullable string
+    int ni; // nullable int
+};
+
+short NRecNullableOffsets[] = {
+    (short)offsetof(NRec, nstr),
+    (short)offsetof(NRec, ni),
+};
+
+const int NRecNullableNum = sizeof(NRecNullableOffsets) / sizeof(short);
+
 //
 // Global PF_Manager and RM_Manager variables
 //
@@ -70,6 +83,7 @@ RC Test4(void);
 RC Test5(void);
 RC Test6(void);
 RC Test7(void);
+RC Test8(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -99,6 +113,7 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test5,
     Test6,
     Test7,
+    Test8,
 };
 #define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
@@ -108,6 +123,7 @@ int (*tests[])() =                      // RC doesn't work on some compilers
 int main(int argc, char *argv[])
 {
     FLAGS_logtostderr = true;
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
     RC   rc;
@@ -734,7 +750,7 @@ RC Test7(void) {
 
     LOG(INFO) << "test7 starting ****************";
 
-    int recsPerPage = 99; // calculated records per page; this might change
+    int recsPerPage = 97; // calculated records per page; this might change
     int pages = 5;
     int recsToDel = 100;
 
@@ -833,3 +849,56 @@ RC Test7(void) {
     return (0);
 }
 
+RC Test8(void) {
+    RM_FileHandle fh;
+
+    LOG(INFO) << "test8 starting";
+
+    TRY(rmm.CreateFile(FILENAME, sizeof(NRec),
+            NRecNullableNum, NRecNullableOffsets));
+    TRY(rmm.OpenFile(FILENAME, fh));
+
+    RID rid;
+
+    NRec nr;
+
+    nr.num = 1;
+    strncpy(nr.nstr, "notnull", STRLEN);
+    // nr.ni = NULL
+    bool isnull_0[2] = {false, true};
+    TRY(fh.InsertRec((char*)&nr, rid, isnull_0));
+
+    nr.num = 2;
+    // nr.nstr = NULL;
+    nr.ni = 4;
+    bool isnull_1[2] = {true, false};
+    TRY(fh.InsertRec((char*)&nr, rid, isnull_1));
+
+    RM_FileScan sc;
+    RM_Record rec;
+    NRec* nrp;
+
+    TRY(sc.OpenScan(fh, STRING, 0, offsetof(NRec, nstr),
+                NOTNULL_OP, NULL));
+    TRY(sc.GetNextRec(rec));
+    TRY(rec.GetData(CVOID(nrp)));
+    CHECK(nrp->num == 1);
+    CHECK(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
+
+    TRY(sc.OpenScan(fh, INT, 0, offsetof(NRec, ni),
+                NOTNULL_OP, NULL));
+    TRY(sc.GetNextRec(rec));
+    TRY(rec.GetData(CVOID(nrp)));
+    CHECK(nrp->num == 2);
+    CHECK(nrp->ni == 4);
+    CHECK(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
+
+
+    TRY(rmm.CloseFile(fh));
+
+    LOG(INFO) << "test8 done";
+
+    return 0;
+}

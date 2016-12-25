@@ -11,9 +11,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <dirent.h>
+#include <cassert>
+
 #include "redbase.h"
 #include "parser_internal.h"
 #include "y.tab.h"
+
+#include <glog/logging.h>
 
 #include "sm.h"
 #include "ql.h"
@@ -94,7 +99,33 @@ RC interp(NODE *n) {
     switch (n -> kind) {
 
     case N_SHOWDBS: {
-        fprintf(ERRFP, "not implemented\n");
+        if (db_opened) {
+            VLOG(1) << "closing current database";
+            if ((errval = pSmm->CloseDb())) break;
+        }
+        static char cwd[256];
+        CHECK(getcwd(cwd, 256) == cwd) << "current directory too long.";
+        VLOG(1) << "got current working directory " << cwd;
+        DIR* d = opendir(".");
+        struct dirent *ent;
+        while ((ent = readdir(d)) != NULL) {
+            VLOG(1) << "attempting to open " << ent->d_name << " as database...";
+            int ret = pSmm->OpenDb(ent->d_name);
+            if (ret) {
+                if (2 <= FLAGS_v) {
+                    PrintError(ret);
+                }
+                CHECK(chdir(cwd) == 0) << "chdir back failed.";
+            } else {
+                fprintf(ERRFP, "%s\n", ent->d_name);
+                pSmm->CloseDb();
+            }
+        }
+        closedir(d);
+        if (db_opened) {
+            VLOG(1) << "reopening previous database";
+            errval = pSmm->OpenDb(current_db);
+        }
         break;
     }
 
@@ -163,6 +194,11 @@ RC interp(NODE *n) {
             db_opened = true;
             strcpy(current_db, relname);
         }
+        break;
+    }
+
+    case N_SHOWTABLES: {
+        errval = pSmm->Print("relcat");
         break;
     }
 

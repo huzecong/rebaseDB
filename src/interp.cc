@@ -457,7 +457,7 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
             for (int j = 0; j < list_length; ++j) {
                 auto & info = attrInfos[j];
                 if (info.attrName == attrtype.attrname) {
-                    info.attrSpecs |= ATTR_SPEC_PRIMARYKEY;
+                    info.attrSpecs |= (ATTR_SPEC_PRIMARYKEY | ATTR_SPEC_NOTNULL);
                 }
             }
         }
@@ -545,15 +545,17 @@ static int mk_conditions(NODE *list, int max, Condition conditions[]) {
         conditions[i].lhsAttr.attrName =
             current->u.CONDITION.lhsRelattr->u.RELATTR.attrname;
         conditions[i].op = current->u.CONDITION.op;
-        if (current->u.CONDITION.rhsRelattr) {
-            conditions[i].bRhsIsAttr = TRUE;
-            conditions[i].rhsAttr.relName =
-                current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
-            conditions[i].rhsAttr.attrName =
-                current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
-        } else {
-            conditions[i].bRhsIsAttr = FALSE;
-            mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+        if (conditions[i].op != ISNULL_OP && conditions[i].op != NOTNULL_OP) {
+            if (current->u.CONDITION.rhsRelattr) {
+                conditions[i].bRhsIsAttr = TRUE;
+                conditions[i].rhsAttr.relName =
+                    current->u.CONDITION.rhsRelattr->u.RELATTR.relname;
+                conditions[i].rhsAttr.attrName =
+                    current->u.CONDITION.rhsRelattr->u.RELATTR.attrname;
+            } else {
+                conditions[i].bRhsIsAttr = FALSE;
+                mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
+            }
         }
     }
 
@@ -757,7 +759,7 @@ static void echo_query(NODE *n) {
         printf("drop table %s;\n", n -> u.DROPTABLE.relname);
         break;
     case N_LOAD:            /* for Load() */
-        printf("load %s(\"%s\");\n",
+        printf("load %s(\'%s\');\n",
                n -> u.LOAD.relname, n -> u.LOAD.filename);
         break;
     case N_HELP:            /* for Help() */
@@ -770,7 +772,7 @@ static void echo_query(NODE *n) {
         printf("print %s;\n", n -> u.PRINT.relname);
         break;
     case N_SET:                                 /* for Set() */
-        printf("set %s = \"%s\";\n", n->u.SET.paramName, n->u.SET.string);
+        printf("set %s = \'%s\';\n", n->u.SET.paramName, n->u.SET.string);
         break;
     case N_QUERY:            /* for Query() */
         printf("select ");
@@ -843,6 +845,12 @@ static void print_attrtypes(NODE *n) {
 
 static void print_op(CompOp op) {
     switch (op) {
+    case ISNULL_OP:
+        printf(" is null");
+        break;
+    case NOTNULL_OP:
+        printf(" is not null");
+        break;
     case EQ_OP:
         printf(" =");
         break;
@@ -883,7 +891,7 @@ static void print_value(NODE *n) {
         printf(" %f", n -> u.VALUE.rval);
         break;
     case STRING:
-        printf(" \"%s\"", n -> u.VALUE.sval);
+        printf(" \'%s\'", n -> u.VALUE.sval);
         break;
     }
 }
@@ -893,7 +901,7 @@ static void print_condition(NODE *n) {
     print_op(n->u.CONDITION.op);
     if (n->u.CONDITION.rhsRelattr)
         print_relattr(n->u.CONDITION.rhsRelattr);
-    else
+    if (n->u.CONDITION.rhsValue)
         print_value(n->u.CONDITION.rhsValue);
 }
 

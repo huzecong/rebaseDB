@@ -267,10 +267,13 @@ NODE *condition_node(NODE *lhsRelattr, CompOp op, NODE *rhsRelattrOrValue) {
 
     n->u.CONDITION.lhsRelattr = lhsRelattr;
     n->u.CONDITION.op = op;
-    n->u.CONDITION.rhsRelattr =
-        rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
-    n->u.CONDITION.rhsValue =
-        rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+    if (rhsRelattrOrValue) {
+        // binary operator
+        n->u.CONDITION.rhsRelattr =
+            rhsRelattrOrValue->u.RELATTR_OR_VALUE.relattr;
+        n->u.CONDITION.rhsValue =
+            rhsRelattrOrValue->u.RELATTR_OR_VALUE.value;
+    }
     return n;
 }
 

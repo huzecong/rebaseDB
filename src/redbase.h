@@ -77,6 +77,7 @@ enum AttrSpec {
 //
 enum CompOp {
     NO_OP,                                      // no comparison
+    ISNULL_OP, NOTNULL_OP,                      // unary operators
     EQ_OP, NE_OP, LT_OP, GT_OP, LE_OP, GE_OP    // binary atomic operators
 };
 

@@ -535,6 +535,14 @@ condition
    {
       $$ = condition_node($1, $2, $3);
    }
+   | relattr RW_IS RW_NULL
+   {
+      $$ = condition_node($1, ISNULL_OP, NULL);
+   }
+   | relattr RW_IS RW_NOT RW_NULL
+   {
+      $$ = condition_node($1, NOTNULL_OP, NULL);
+   }
    ;
 
 relattr_or_value

@@ -61,6 +61,9 @@ static void print_relations(NODE *n);
 static void print_conditions(NODE *n);
 static void print_values(NODE *n);
 
+static bool db_opened = false;
+static char current_db[MAXNAME];
+
 /*
  * interp: interprets parse trees
  *
@@ -69,10 +72,99 @@ RC interp(NODE *n) {
     RC errval = 0;         /* returned error value      */
 
     /* if input not coming from a terminal, then echo the query */
-    if (!isatty(0))
+    // if (!isatty(0))
         echo_query(n);
 
+    static char cmd[MAXNAME * 2];
+
     switch (n -> kind) {
+        case N_SHOWDBS:
+        case N_CREATEDB:
+        case N_DROPDB:
+        case N_USEDB:
+            break;
+        default:
+            // all other operations require a opened database
+            if (!db_opened) {
+                fprintf(ERRFP, "no database opened. \"use <db_name>\" first.\n");
+                return 0;
+            }
+    }
+
+    switch (n -> kind) {
+
+    case N_SHOWDBS: {
+        fprintf(ERRFP, "not implemented\n");
+        break;
+    }
+
+    case N_CREATEDB: {
+        char* relname = n->u.DB_OP.relname;
+        if (strlen(relname) > MAXNAME) {
+            print_error((char*)"createdb", E_TOOLONG);
+            break;
+        }
+        if (db_opened) {
+            sprintf(cmd, "cd ..; ./dbcreate %s", relname);
+        } else {
+            sprintf(cmd, "./dbcreate %s", relname);
+        }
+        int ret = system(cmd);
+        if (ret != 0) {
+            print_error((char*)"createdb", ret);
+        }
+        break;
+    }
+
+    case N_DROPDB: {
+        char* relname = n->u.DB_OP.relname;
+        if (strlen(relname) > MAXNAME) {
+            print_error((char*)"dropdb", E_TOOLONG);
+            break;
+        }
+        if (db_opened) {
+            if (!strcmp(current_db, relname)) {
+                if ((errval = pSmm->CloseDb())) break;
+                db_opened = false;
+                sprintf(cmd, "rm -r %s", relname);
+            } else {
+                sprintf(cmd, "rm -r ../%s", relname);
+            }
+        } else {
+            sprintf(cmd, "rm -r %s", relname);
+        }
+        int ret = system(cmd);
+        if (ret != 0) {
+            print_error((char*)"dropdb", ret);
+        }
+        break;
+    }
+
+    case N_USEDB: {
+        char* relname = n->u.DB_OP.relname;
+        if (strlen(relname) > MAXNAME) {
+            print_error((char*)"dropdb", E_TOOLONG);
+            break;
+        }
+        if (db_opened) {
+            if (!strcmp(current_db, relname)) {
+                fprintf(ERRFP, "database %s already in use.\n", relname);
+                break;
+            }
+            if ((errval = pSmm->CloseDb())) {
+                break;
+            }
+        }
+        errval = pSmm->OpenDb(relname);
+        if (errval == SM_CHDIR_FAILED) {
+            fprintf(ERRFP, "database %s does not exist.\n", relname);
+            errval = 0;
+        } else if (errval == 0) {
+            db_opened = true;
+            strcpy(current_db, relname);
+        }
+        break;
+    }
 
     case N_CREATETABLE: {          /* for CreateTable() */
         int nattrs;
@@ -556,6 +648,21 @@ static void print_error(char *errmsg, RC errval) {
 
 static void echo_query(NODE *n) {
     switch (n -> kind) {
+    case N_SHOWDBS:
+        printf("show databases;\n");
+        break;
+    case N_CREATEDB:
+        printf("create database %s;\n", n->u.DB_OP.relname);
+        break;
+    case N_DROPDB:
+        printf("drop database %s;\n", n->u.DB_OP.relname);
+        break;
+    case N_USEDB:
+        printf("use %s;\n", n->u.DB_OP.relname);
+        break;
+    case N_SHOWTABLES:
+        printf("show tables;\n");
+        break;
     case N_CREATETABLE:            /* for CreateTable() */
         printf("create table %s (", n -> u.CREATETABLE.relname);
         print_attrtypes(n -> u.CREATETABLE.attrlist);

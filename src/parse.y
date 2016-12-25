@@ -139,6 +139,11 @@ QL_Manager *pQlm;          // QL component manager
       ddl
       dml
       utility
+      showdbs
+      createdb
+      dropdb
+      usedb
+      showtables
       createtable
       createindex
       droptable
@@ -211,7 +216,12 @@ command
    ;
 
 ddl
-   : createtable
+   : showdbs
+   | createdb
+   | dropdb
+   | usedb
+   | showtables
+   | createtable
    | createindex
    | droptable
    | dropindex
@@ -294,6 +304,41 @@ statistics
          cout << "Statitisics not compiled.\n";
       #endif
       $$ = NULL;
+   }
+   ;
+
+showdbs
+   : RW_SHOW RW_DATABASES
+   {
+      $$ = show_dbs_node();
+   }
+   ;
+
+createdb
+   : RW_CREATE RW_DATABASE T_STRING
+   {
+      $$ = create_db_node($3);
+   }
+   ;
+
+dropdb
+   : RW_DROP RW_DATABASE T_STRING
+   {
+      $$ = drop_db_node($3);
+   }
+   ;
+
+usedb
+   : RW_USE T_STRING
+   {
+      $$ = use_db_node($2);
+   }
+   ;
+
+showtables
+   : RW_SHOW RW_TABLES
+   {
+      $$ = show_tables_node();
    }
    ;
 
@@ -403,8 +448,16 @@ non_mt_attrtype_list
 
 attrtype
    : T_STRING T_STRING
-    {
-      $$ = attrtype_node($1, $2);
+   {
+      $$ = attrtype_node($1, $2, ATTR_SPEC_NONE);
+   }
+   | T_STRING T_STRING RW_NOT RW_NULL
+   {
+      $$ = attrtype_node($1, $2, ATTR_SPEC_NOTNULL);
+   }
+   | RW_PRIMARY RW_KEY '(' T_STRING ')'
+   {
+      $$ = attrtype_node($4, NULL, ATTR_SPEC_PRIMARYKEY);
    }
    ;
 

@@ -74,6 +74,32 @@ NODE *newnode(NODEKIND kind) {
     return n;
 }
 
+NODE *show_dbs_node() {
+    return newnode(N_SHOWDBS);
+}
+
+NODE *create_db_node(char *relname) {
+    NODE *n = newnode(N_CREATEDB);
+    n->u.DB_OP.relname = relname;
+    return n;
+}
+
+NODE *drop_db_node(char *relname) {
+    NODE *n = newnode(N_DROPDB);
+    n->u.DB_OP.relname = relname;
+    return n;
+}
+
+NODE *use_db_node(char *relname) {
+    NODE *n = newnode(N_USEDB);
+    n->u.DB_OP.relname = relname;
+    return n;
+}
+
+NODE *show_tables_node() {
+    return newnode(N_SHOWTABLES);
+}
+
 /*
  * create_table_node: allocates, initializes, and returns a pointer to a new
  * create table node having the indicated values.
@@ -286,11 +312,12 @@ NODE *relattr_or_value_node(NODE *relattr, NODE *value) {
  * attrtype_node: allocates, initializes, and returns a pointer to a new
  * attrtype node having the indicated values.
  */
-NODE *attrtype_node(char *attrname, char *type) {
+NODE *attrtype_node(char *attrname, char *type, enum AttrSpec spec) {
     NODE *n = newnode(N_ATTRTYPE);
 
     n -> u.ATTRTYPE.attrname = attrname;
     n -> u.ATTRTYPE.type = type;
+    n -> u.ATTRTYPE.spec = spec;
     return n;
 }
 

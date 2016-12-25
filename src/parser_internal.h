@@ -44,6 +44,11 @@ typedef struct {
  * all the available kinds of nodes
  */
 typedef enum {
+    N_SHOWDBS,
+    N_CREATEDB,
+    N_DROPDB,
+    N_USEDB,
+    N_SHOWTABLES,
     N_CREATETABLE,
     N_CREATEINDEX,
     N_DROPTABLE,
@@ -74,6 +79,10 @@ typedef struct node {
 
     union {
         /* SM component nodes */
+        struct {
+            char *relname;
+        } DB_OP;
+
         /* create table node */
         struct {
             char *relname;
@@ -172,6 +181,7 @@ typedef struct node {
         struct {
             char *attrname;
             char *type;
+            enum AttrSpec spec;
         } ATTRTYPE;
 
         /* <value, type> pair */
@@ -200,6 +210,11 @@ typedef struct node {
  * function prototypes
  */
 NODE *newnode(NODEKIND kind);
+NODE *show_dbs_node();
+NODE *create_db_node(char *relname);
+NODE *drop_db_node(char *relname);
+NODE *use_db_node(char *relname);
+NODE *show_tables_node();
 NODE *create_table_node(char *relname, NODE *attrlist);
 NODE *create_index_node(char *relname, char *attrname);
 NODE *drop_index_node(char *relname, char *attrname);
@@ -217,7 +232,7 @@ NODE *relattr_node(char *relname, char *attrname);
 NODE *condition_node(NODE *lhsRelattr, enum CompOp op, NODE *rhsRelattrOrValue);
 NODE *value_node(enum AttrType type, void *value);
 NODE *relattr_or_value_node(NODE *relattr, NODE *value);
-NODE *attrtype_node(char *attrname, char *type);
+NODE *attrtype_node(char *attrname, char *type, enum AttrSpec spec);
 NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);

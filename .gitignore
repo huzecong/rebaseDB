@@ -12,3 +12,10 @@ test/
 
 # YCM config
 **/*.ycm_extra_conf.py*
+
+# generated files
+src/parse.c
+src/scan.c
+src/y.tab.h
+src/*_test
+!src/*_test.cpp

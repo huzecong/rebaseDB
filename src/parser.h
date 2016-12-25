@@ -17,6 +17,7 @@ struct AttrInfo {
     char     *attrName;   /* attribute name       */
     enum AttrType attrType;    /* type of attribute    */
     int      attrLength;  /* length of attribute  */
+    int      attrSpecs; /* additional specification(s) */
 };
 
 struct RelAttr {

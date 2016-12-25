@@ -312,11 +312,12 @@ NODE *relattr_or_value_node(NODE *relattr, NODE *value) {
  * attrtype_node: allocates, initializes, and returns a pointer to a new
  * attrtype node having the indicated values.
  */
-NODE *attrtype_node(char *attrname, char *type, enum AttrSpec spec) {
+NODE *attrtype_node(char *attrname, char *type, int size, enum AttrSpec spec) {
     NODE *n = newnode(N_ATTRTYPE);
 
     n -> u.ATTRTYPE.attrname = attrname;
     n -> u.ATTRTYPE.type = type;
+    n -> u.ATTRTYPE.size = size;
     n -> u.ATTRTYPE.spec = spec;
     return n;
 }

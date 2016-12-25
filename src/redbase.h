@@ -67,9 +67,9 @@ enum AttrType {
 
 // Attribute specifications
 enum AttrSpec {
-    ATTR_SPEC_NONE,
-    ATTR_SPEC_NOTNULL,
-    ATTR_SPEC_PRIMARYKEY,
+    ATTR_SPEC_NONE = 0x0,
+    ATTR_SPEC_NOTNULL = 0x1,
+    ATTR_SPEC_PRIMARYKEY = 0x2,
 };
 
 //

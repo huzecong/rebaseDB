@@ -37,6 +37,7 @@ extern QL_Manager *pQlm;
 #define E_DUPLICATEATTR     -8
 #define E_TOOLONG           -9
 #define E_STRINGTOOLONG     -10
+#define E_MULTIPLEPRIMARYKEY -11
 
 /*
  * file pointer to which error messages are printed
@@ -397,36 +398,72 @@ RC interp(NODE *n) {
  */
 static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
     int i;
-    int len;
+    int list_length;
     AttrType type;
     NODE *attr;
-    RC errval;
+
+    bool has_primary_key = false;
 
     /* for each element of the list... */
     for (i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
+        attr = list -> u.LIST.curr;
+        auto & attrtype = attr->u.ATTRTYPE;
+
+        if (attrtype.spec == ATTR_SPEC_PRIMARYKEY) {
+            if (has_primary_key) {
+                return E_MULTIPLEPRIMARYKEY;
+            }
+            has_primary_key = true;
+            // prevent the index from increasing
+            --i;
+            continue;
+        }
 
         /* if the list is too long, then error */
         if (i == max)
             return E_TOOMANY;
 
-        attr = list -> u.LIST.curr;
-
         /* Make sure the attribute name isn't too long */
-        if (strlen(attr -> u.ATTRTYPE.attrname) > MAXNAME)
+        if (strlen(attrtype.attrname) > MAXNAME)
             return E_TOOLONG;
 
         /* interpret the format string */
-        errval = parse_format_string(attr -> u.ATTRTYPE.type, &type, &len);
-        if (errval != E_OK)
-            return errval;
+        char* type_str = attrtype.type;
+        for (char* p = type_str; *p; ++p) {
+            *p = tolower(*p);
+        }
+        if (!strcmp(type_str, "int")) {
+            type = INT;
+        } else if (!strcmp(type_str, "char")) {
+            type = STRING;
+        } else if (!strcmp(type_str, "float")) {
+            type = FLOAT;
+        }
 
         /* add it to the list */
-        attrInfos[i].attrName = attr -> u.ATTRTYPE.attrname;
-        attrInfos[i].attrType = type;
-        attrInfos[i].attrLength = len;
+        auto & info = attrInfos[i];
+        info.attrName = attrtype.attrname;
+        info.attrType = type;
+        info.attrLength = attrtype.size;
+        info.attrSpecs = attrtype.spec;
     }
 
-    return i;
+    list_length = i;
+
+    for (i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
+        attr = list -> u.LIST.curr;
+        auto & attrtype = attr->u.ATTRTYPE;
+        if (attrtype.spec == ATTR_SPEC_PRIMARYKEY) {
+            for (int j = 0; j < list_length; ++j) {
+                auto & info = attrInfos[j];
+                if (info.attrName == attrtype.attrname) {
+                    info.attrSpecs |= ATTR_SPEC_PRIMARYKEY;
+                }
+            }
+        }
+    }
+
+    return list_length;
 }
 
 /*
@@ -677,6 +714,9 @@ static void print_error(char *errmsg, RC errval) {
     case E_STRINGTOOLONG:
         fprintf(stderr, "string attribute too long\n");
         break;
+    case E_MULTIPLEPRIMARYKEY:
+        fprintf(ERRFP, "more than one attributes specified as primary key\n");
+        break;
     default:
         fprintf(ERRFP, "unrecognized errval: %d\n", errval);
     }
@@ -789,7 +829,13 @@ static void print_attrtypes(NODE *n) {
 
     for (; n != NULL; n = n -> u.LIST.next) {
         attr = n -> u.LIST.curr;
-        printf("%s = %s", attr -> u.ATTRTYPE.attrname, attr -> u.ATTRTYPE.type);
+        auto & t = attr->u.ATTRTYPE;
+        if (t.spec != ATTR_SPEC_PRIMARYKEY) {
+            printf("%s %s(%d)", t.attrname, t.type, t.size);
+            if (t.spec == ATTR_SPEC_NOTNULL) printf(" not null");
+        } else {
+            printf("primary key(%s)", t.attrname);
+        }
         if (n -> u.LIST.next != NULL)
             printf(", ");
     }

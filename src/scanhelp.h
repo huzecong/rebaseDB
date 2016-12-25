@@ -162,8 +162,6 @@ static int get_id(char *s) {
         return yylval.ival = RW_NULL;
     if (!strcmp(string, "is"))
         return yylval.ival = RW_IS;
-    if (!strcmp(string, "int"))
-        return yylval.ival = RW_INT;
     if (!strcmp(string, "desc"))
         return yylval.ival = RW_DESC;
 

@@ -105,7 +105,6 @@ QL_Manager *pQlm;          // QL component manager
       RW_NOT
       RW_NULL
       RW_IS
-      RW_INT
       RW_DESC
       T_EQ
       T_LT
@@ -447,17 +446,17 @@ non_mt_attrtype_list
    ;
 
 attrtype
-   : T_STRING T_STRING
+   : T_STRING T_STRING '(' T_INT ')'
    {
-      $$ = attrtype_node($1, $2, ATTR_SPEC_NONE);
+      $$ = attrtype_node($1, $2, $4, ATTR_SPEC_NONE);
    }
-   | T_STRING T_STRING RW_NOT RW_NULL
+   | T_STRING T_STRING '(' T_INT ')' RW_NOT RW_NULL
    {
-      $$ = attrtype_node($1, $2, ATTR_SPEC_NOTNULL);
+      $$ = attrtype_node($1, $2, $4, ATTR_SPEC_NOTNULL);
    }
    | RW_PRIMARY RW_KEY '(' T_STRING ')'
    {
-      $$ = attrtype_node($4, NULL, ATTR_SPEC_PRIMARYKEY);
+      $$ = attrtype_node($4, NULL, 0, ATTR_SPEC_PRIMARYKEY);
    }
    ;
 
@@ -467,7 +466,7 @@ non_mt_select_clause
    {
        $$ = list_node(relattr_node(NULL, (char*)"*"));
    }
-      
+   ;
 
 non_mt_relattr_list
    : relattr ',' non_mt_relattr_list
@@ -641,6 +640,8 @@ void PrintError(RC rc)
       cerr << "Error code out of range: " << rc << "\n";
 }
 
+bool output_prompt;
+
 //
 // RBparse
 //
@@ -663,11 +664,13 @@ void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm)
       /* Reset parser and scanner for a new query */
       new_query();
 
-      /* Print a prompt */
-      cout << PROMPT;
+      if (output_prompt) {
+         /* Print a prompt */
+         cout << PROMPT;
 
-      /* Get the prompt to actually show up on the screen */
-      cout.flush(); 
+         /* Get the prompt to actually show up on the screen */
+         cout.flush();
+      }
 
       /* If a query was successfully read, interpret it */
       if(yyparse() == 0 && parse_tree != NULL)

@@ -162,6 +162,7 @@ void RM_PrintError(RC rc);
 #define RM_LASTWARN             RM_SCAN_NOT_CLOSED
 
 #define RM_RECORDSIZE_TOO_LARGE (START_RM_ERR - 0) // record size larger than PF_PAGE_SIZE
-#define RM_LASTERROR            RM_RECORDSIZE_TOO_LARGE
+#define RM_BAD_NULLABLE_NUM     (START_RM_ERR - 1) // nullableNum out of range
+#define RM_LASTERROR            RM_BAD_NULLABLE_NUM
 
 #endif

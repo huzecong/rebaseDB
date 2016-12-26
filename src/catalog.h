@@ -20,6 +20,9 @@ struct AttrCatEntry {
     int offset;                 // offset in bytes from beginning of tuple
     AttrType attrType;          // attribute type
     int attrLength;             // attribute length
+                                //     for INT columns the length is only used to format display
+                                //     for STRING columns the length does NOT include '\0'
+    int attrSpecs;              // attribute specification(s)
     int indexNo;                // index number, or -1 if not indexed
 };
 

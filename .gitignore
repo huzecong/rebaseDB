@@ -17,5 +17,5 @@ test/
 src/parse.c
 src/scan.c
 src/y.tab.h
-src/*_test
-!src/*_test.cpp
+src/*_test*
+!src/*_test*.cpp

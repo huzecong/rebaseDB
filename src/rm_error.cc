@@ -24,7 +24,8 @@ static const char *RM_WarnMsg[] = {
 };
 
 static const char *RM_ErrorMsg[] = {
-        "recordSize is too large for current pagefile system"
+        "recordSize is too large for current pagefile system",
+        "nullable num read from the header is out of range",
 };
 
 void RM_PrintError(RC rc) {

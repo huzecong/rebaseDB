@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     const char *(relName[MAXNAME + 1]) = {"relcat", "attrcat"};
     const char *(attrName[MAXNAME + 1]) = {
             "relName", "tupleLength", "attrCount", "indexCount",
-            "relName", "attrName", "offset", "attrType", "attrLength", "indexNo"
+            "relName", "attrName", "offset", "attrType", "attrLength", "attrSpecs", "indexNo"
     };
 
     RM_FileHandle handle;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
     memcpy(relEntry.relName, relName[1], MAXNAME + 1);
     relEntry.tupleLength = sizeof(AttrCatEntry);
-    relEntry.attrCount = 6;
+    relEntry.attrCount = 7;
     relEntry.indexCount = 0;
     handle.InsertRec((const char *)&relEntry, rid);
 
@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
     // Adding attribute metadata of relcat and attrcat
     rmm.OpenFile("attrcat", handle);
     AttrCatEntry attrEntry;
+    attrEntry.attrSpecs = ATTR_SPEC_NOTNULL;
     attrEntry.indexNo = -1;
 
     memcpy(attrEntry.relName, relName[0], MAXNAME + 1);
@@ -145,6 +146,9 @@ int main(int argc, char *argv[]) {
     attrEntry.offset = offsetof(AttrCatEntry, attrLength);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[9], MAXNAME + 1);
+    attrEntry.offset = offsetof(AttrCatEntry, attrSpecs);
+    handle.InsertRec((const char *)&attrEntry, rid);
+    memcpy(attrEntry.attrName, attrName[10], MAXNAME + 1);
     attrEntry.offset = offsetof(AttrCatEntry, indexNo);
     handle.InsertRec((const char *)&attrEntry, rid);
 

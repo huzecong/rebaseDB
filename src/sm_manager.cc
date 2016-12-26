@@ -52,8 +52,14 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
         strcpy(attrEntry.attrName, attributes[i].attrName);
         attrEntry.offset = offset;
         attrEntry.attrType = attributes[i].attrType;
-        attrEntry.attrLength = attributes[i].attrLength + (int)(attrEntry.attrType == STRING);
-        offset += (attrEntry.attrLength + 3) & (~0x3);
+        attrEntry.attrLength = attributes[i].attrLength;
+        attrEntry.attrSpecs = attributes[i].attrSpecs;
+        if (attributes[i].attrType == INT) {
+            offset += sizeof(int);
+        } else {
+            // + 1 for terminating '\0'
+            offset += upper_align<4>(attrEntry.attrLength + 1);
+        }
         attrEntry.indexNo = -1;
         TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
     }

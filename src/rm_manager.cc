@@ -82,7 +82,13 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
     fileHandle.recordSize = data->recordSize;
     fileHandle.recordsPerPage = data->recordsPerPage;
     fileHandle.nullableNum = data->nullableNum;
-    fileHandle.nullableOffsets = new short[data->nullableNum];
+    if (data->nullableNum < 0) {
+        return RM_BAD_NULLABLE_NUM;
+    } else if (data->nullableNum > 0) {
+        fileHandle.nullableOffsets = new short[data->nullableNum];
+    } else {
+        fileHandle.nullableOffsets = NULL;
+    }
     for (int i = 0; i < data->nullableNum; ++i) {
         fileHandle.nullableOffsets[i] = data->nullableOffsets[i];
     }

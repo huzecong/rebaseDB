@@ -38,6 +38,7 @@ extern QL_Manager *pQlm;
 #define E_TOOLONG           -9
 #define E_STRINGTOOLONG     -10
 #define E_MULTIPLEPRIMARYKEY -11
+#define E_PRIMARYKEYNOTFOUND -12
 
 /*
  * file pointer to which error messages are printed
@@ -402,7 +403,7 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
     AttrType type;
     NODE *attr;
 
-    bool has_primary_key = false;
+    const char* primary_key = NULL;
 
     /* for each element of the list... */
     for (i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
@@ -410,10 +411,10 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
         auto & attrtype = attr->u.ATTRTYPE;
 
         if (attrtype.spec == ATTR_SPEC_PRIMARYKEY) {
-            if (has_primary_key) {
+            if (primary_key != NULL) {
                 return E_MULTIPLEPRIMARYKEY;
             }
-            has_primary_key = true;
+            primary_key = attrtype.attrname;
             // prevent the index from increasing
             --i;
             continue;
@@ -427,6 +428,13 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
         if (strlen(attrtype.attrname) > MAXNAME)
             return E_TOOLONG;
 
+        for (int j = 0; j < i; ++j) {
+            auto & info = attrInfos[j];
+            if (!strcmp(info.attrName, attrtype.attrname)) {
+                return E_DUPLICATEATTR;
+            }
+        }
+
         /* interpret the format string */
         char* type_str = attrtype.type;
         for (char* p = type_str; *p; ++p) {
@@ -438,6 +446,8 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
             type = STRING;
         } else if (!strcmp(type_str, "float")) {
             type = FLOAT;
+        } else {
+            return E_INVFORMATSTRING;
         }
 
         /* add it to the list */
@@ -450,17 +460,19 @@ static int mk_attr_infos(NODE *list, int max, AttrInfo attrInfos[]) {
 
     list_length = i;
 
-    for (i = 0; list != NULL; ++i, list = list -> u.LIST.next) {
-        attr = list -> u.LIST.curr;
-        auto & attrtype = attr->u.ATTRTYPE;
-        if (attrtype.spec == ATTR_SPEC_PRIMARYKEY) {
-            for (int j = 0; j < list_length; ++j) {
-                auto & info = attrInfos[j];
-                if (info.attrName == attrtype.attrname) {
-                    info.attrSpecs |= (ATTR_SPEC_PRIMARYKEY | ATTR_SPEC_NOTNULL);
-                }
+    if (primary_key != NULL) {
+        for (int j = 0; j < list_length; ++j) {
+            auto & info = attrInfos[j];
+            if (!strcmp(info.attrName, primary_key)) {
+                info.attrSpecs |= (ATTR_SPEC_PRIMARYKEY | ATTR_SPEC_NOTNULL);
+                primary_key = NULL;
+                break;
             }
         }
+    }
+
+    if (primary_key) {
+        return E_PRIMARYKEYNOTFOUND;
     }
 
     return list_length;
@@ -718,6 +730,9 @@ static void print_error(char *errmsg, RC errval) {
         break;
     case E_MULTIPLEPRIMARYKEY:
         fprintf(ERRFP, "more than one attributes specified as primary key\n");
+        break;
+    case E_PRIMARYKEYNOTFOUND:
+        fprintf(ERRFP, "specified primary key does not appear to be an attribute name\n");
         break;
     default:
         fprintf(ERRFP, "unrecognized errval: %d\n", errval);

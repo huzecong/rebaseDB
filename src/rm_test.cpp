@@ -85,7 +85,7 @@ RC Test6(void);
 RC Test7(void);
 RC Test8(void);
 
-void PrintError(RC rc);
+void Test_PrintError(RC rc);
 void LsFile(char *fileName);
 void PrintRecord(TestRec &recBuf);
 RC AddRecs(RM_FileHandle &fh, int numRecs);
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
             if ((rc = (tests[testNum])())) {
 
                 // Print the error and exit
-                PrintError(rc);
+                Test_PrintError(rc);
                 return (1);
             }
     }
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
             if ((rc = (tests[testNum - 1])())) {
 
                 // Print the error and exit
-                PrintError(rc);
+                Test_PrintError(rc);
                 return (1);
             }
         }
@@ -183,12 +183,12 @@ int main(int argc, char *argv[])
 }
 
 //
-// PrintError
+// Test_PrintError
 //
 // Desc: Print an error message by calling the proper component-specific
 //       print-error function
 //
-void PrintError(RC rc)
+void Test_PrintError(RC rc)
 {
     if (abs(rc) <= END_PF_WARN)
         PF_PrintError(rc);

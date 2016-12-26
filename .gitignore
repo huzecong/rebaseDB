@@ -2,6 +2,7 @@ build
 lib
 cmake-build*
 test/
+dataset*
 
 # CLion config
 .idea/

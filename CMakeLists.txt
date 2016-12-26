@@ -9,6 +9,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(FLEX)
 find_package(BISON)
 find_package(glog)
+find_package(gflags)
 
 include_directories(${GLOG_INCLUDE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -25,7 +26,6 @@ file(GLOB C_SOURCE_FILES
 file(GLOB CPP_SOURCE_FILES
         "src/*.h"
         "src/*.cc"
-        "src/*.c"
         )
 set(SOURCE_FILES
         ${C_SOURCE_FILES}
@@ -36,6 +36,8 @@ set(SOURCE_FILES
 
 add_executable(dbcreate ${SOURCE_FILES} "src/dbcreate.cpp")
 add_executable(redbase ${SOURCE_FILES} "src/redbase.cpp")
+add_executable(rm_test ${SOURCE_FILES} "src/rm_test.cpp")
 
 target_link_libraries(dbcreate ${GLOG_LIBRARIES})
 target_link_libraries(redbase ${GLOG_LIBRARIES})
+target_link_libraries(rm_test ${GLOG_LIBRARIES})

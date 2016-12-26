@@ -738,6 +738,8 @@ ostream &operator<<(ostream &s, const Value &v)
       case STRING:
          s << " (char *)data=" << (char *)v.data;
          break;
+      default:
+         break;
    }
    return s;
 }
@@ -765,6 +767,8 @@ ostream &operator<<(ostream &s, const CompOp &op)
          break;
       case NO_OP:
          s << " NO_OP";
+         break;
+      default:
          break;
    }
    return s;

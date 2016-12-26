@@ -30,7 +30,7 @@ struct RelAttr {
 };
 
 struct Value {
-    enum AttrType type;         /* type of value               */
+    enum ValueType type;         /* type of value               */
     void     *data;        /* value                       */
 #ifdef __cplusplus
                /* print function              */

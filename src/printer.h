@@ -35,6 +35,7 @@ struct DataAttrInfo {
         offset = d.offset;
         attrType = d.attrType;
         attrLength = d.attrLength;
+        attrSpecs = d.attrSpecs;
         indexNo = d.indexNo;
     };
 
@@ -45,6 +46,7 @@ struct DataAttrInfo {
             offset = d.offset;
             attrType = d.attrType;
             attrLength = d.attrLength;
+            attrSpecs = d.attrSpecs;
             indexNo = d.indexNo;
         }
         return (*this);
@@ -55,6 +57,7 @@ struct DataAttrInfo {
     int      offset;                // Offset of attribute
     AttrType attrType;              // Type of attribute
     int      attrLength;            // Length of attribute
+    int      attrSpecs;             // Attribute specifications
     int      indexNo;               // Index number of attribute
 };
 
@@ -74,8 +77,8 @@ public:
     // data and is useful when the data corresponds to a single record in
     // a table -- since in this situation you can just send in the
     // RecData.  The second will be useful in the QL layer.
-    void Print(std::ostream &c, const char * const data);
-    void Print(std::ostream &c, const void * const data[]);
+    void Print(std::ostream &c, const char * const data, bool isnull[]);
+    void Print(std::ostream &c, const void * const data[], bool isnull[]);
 
     void PrintFooter(std::ostream &c) const;
 

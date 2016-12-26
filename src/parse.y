@@ -580,6 +580,10 @@ value
    {
       $$ = value_node(FLOAT, (void *)& $1);
    }
+   | RW_NULL
+   {
+      $$ = NULL;
+   }
    ;
 
 opt_relname

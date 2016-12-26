@@ -14,7 +14,9 @@ using namespace std;
 // Error table
 //
 const char *QL_WarnMsg[] = {
-    
+    "number of values to insert does not match",
+    "value type does not match",
+    "string value too long",
 };
 
 const char *QL_ErrorMsg[] = {

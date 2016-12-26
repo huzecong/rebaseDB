@@ -65,6 +65,13 @@ enum AttrType {
     STRING
 };
 
+enum ValueType {
+    VT_NULL,
+    VT_INT,
+    VT_FLOAT,
+    VT_STRING,
+};
+
 // Attribute specifications
 enum AttrSpec {
     ATTR_SPEC_NONE = 0x0,

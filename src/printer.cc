@@ -155,7 +155,7 @@ void Printer::PrintFooter(ostream &c) const {
 //  Unfortunately, this is essentially the same as the other Print
 //  routine.
 //
-void Printer::Print(ostream &c, const void * const data[]) {
+void Printer::Print(ostream &c, const void * const data[], bool isnull[]) {
     char str[MAXPRINTSTRING], strSpace[50];
     int i, a;
     float b;
@@ -163,28 +163,35 @@ void Printer::Print(ostream &c, const void * const data[]) {
     // Increment the number of tuples printed
     iCount++;
 
+    int nullableIndex = 0;
+
     for (i = 0; i < attrCount; i++) {
-        if (attributes[i].attrType == STRING) {
+        bool this_isnull = false;
+        if (!(attributes[i].attrSpecs & ATTR_SPEC_NOTNULL)) {
+            this_isnull = isnull[nullableIndex++];
+        }
+        if (attributes[i].attrType == STRING || this_isnull) {
             // We will only print out the first MAXNAME+10 characters of
             // the string value.
             memset(str, 0, MAXPRINTSTRING);
 
+            const char* str_to_print = this_isnull ? "NULL" : (char *)data[i];
+
             if (attributes[i].attrLength > MAXPRINTSTRING) {
-                strncpy(str, (char *)data[i], MAXPRINTSTRING - 1);
+                strncpy(str, str_to_print, MAXPRINTSTRING - 1);
                 str[MAXPRINTSTRING - 3] = '.';
                 str[MAXPRINTSTRING - 2] = '.';
                 c << str;
                 Spaces(MAXPRINTSTRING, strlen(str));
             } else {
-                strncpy(str, (char *)data[i], attributes[i].attrLength);
+                strncpy(str, str_to_print, attributes[i].attrLength);
                 c << str;
                 if (attributes[i].attrLength < (int) strlen(psHeader[i]))
                     Spaces(strlen(psHeader[i]), strlen(str));
                 else
                     Spaces(attributes[i].attrLength, strlen(str));
             }
-        }
-        if (attributes[i].attrType == INT) {
+        } else if (attributes[i].attrType == INT) {
             memcpy (&a, data[i], sizeof(int));
             sprintf(strSpace, "%d", a);
             c << a;
@@ -192,8 +199,7 @@ void Printer::Print(ostream &c, const void * const data[]) {
                 Spaces(12, strlen(strSpace));
             else
                 Spaces(strlen(psHeader[i]), strlen(strSpace));
-        }
-        if (attributes[i].attrType == FLOAT) {
+        } else if (attributes[i].attrType == FLOAT) {
             memcpy (&b, data[i], sizeof(float));
             sprintf(strSpace, "%f", b);
             c << strSpace;
@@ -215,7 +221,7 @@ void Printer::Print(ostream &c, const void * const data[]) {
 //  attempt is made to keep the tuple constrained to some number of
 //  characters.
 //
-void Printer::Print(ostream &c, const char * const data) {
+void Printer::Print(ostream &c, const char * const data, bool isnull[]) {
     char str[MAXPRINTSTRING], strSpace[50];
     int i, a;
     float b;
@@ -226,28 +232,35 @@ void Printer::Print(ostream &c, const char * const data) {
     // Increment the number of tuples printed
     iCount++;
 
+    int nullableIndex = 0;
+
     for (i = 0; i < attrCount; i++) {
-        if (attributes[i].attrType == STRING) {
+        bool this_isnull = false;
+        if (!(attributes[i].attrSpecs & ATTR_SPEC_NOTNULL)) {
+            this_isnull = isnull[nullableIndex++];
+        }
+        if (attributes[i].attrType == STRING || this_isnull) {
             // We will only print out the first MAXNAME+10 characters of
             // the string value.
             memset(str, 0, MAXPRINTSTRING);
 
+            const char* str_to_print = this_isnull ? "NULL" : data + attributes[i].offset;
+
             if (attributes[i].attrLength > MAXPRINTSTRING) {
-                strncpy(str, data + attributes[i].offset, MAXPRINTSTRING - 1);
+                strncpy(str, str_to_print, MAXPRINTSTRING - 1);
                 str[MAXPRINTSTRING - 3] = '.';
                 str[MAXPRINTSTRING - 2] = '.';
                 c << str;
                 Spaces(MAXPRINTSTRING, strlen(str));
             } else {
-                strncpy(str, data + attributes[i].offset, attributes[i].attrLength);
+                strncpy(str, str_to_print, attributes[i].attrLength);
                 c << str;
                 if (attributes[i].attrLength < (int) strlen(psHeader[i]))
                     Spaces(strlen(psHeader[i]), strlen(str));
                 else
                     Spaces(attributes[i].attrLength, strlen(str));
             }
-        }
-        if (attributes[i].attrType == INT) {
+        } else if (attributes[i].attrType == INT) {
             memcpy (&a, (data + attributes[i].offset), sizeof(int));
             sprintf(strSpace, "%d", a);
             c << a;
@@ -255,8 +268,7 @@ void Printer::Print(ostream &c, const char * const data) {
                 Spaces(12, strlen(strSpace));
             else
                 Spaces(strlen(psHeader[i]), strlen(strSpace));
-        }
-        if (attributes[i].attrType == FLOAT) {
+        } else if (attributes[i].attrType == FLOAT) {
             memcpy (&b, (data + attributes[i].offset), sizeof(float));
             sprintf(strSpace, "%f", b);
             c << strSpace;

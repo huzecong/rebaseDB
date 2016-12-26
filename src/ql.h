@@ -46,6 +46,12 @@ public:
                 const Value &rhsValue,           // or value to set attr eq to
                 int   nConditions,               // # conditions in where clause
                 const Condition conditions[]);   // conditions in where clause
+
+private:
+    SM_Manager *pSmm;
+    IX_Manager *pIxm;
+    RM_Manager *pRmm;
+
 };
 
 //
@@ -53,11 +59,12 @@ public:
 //
 void QL_PrintError(RC rc);
 
-#define QL_SOMEWARNING    (START_QL_WARN + 0)  // cannot find key
-#define QL_LASTWARN QL_SOMEWARNING
+#define QL_VALUES_NUM_NOT_MATCH     (START_QL_WARN + 0)
+#define QL_VALUES_TYPE_NOT_MATCH    (START_QL_WARN + 1)
+#define QL_STRING_VAL_TOO_LONG      (START_QL_WARN + 2)
+#define QL_LASTWARN QL_STRING_VAL_TOO_LONG
 
-
-#define QL_SOMEERROR      (START_QL_ERR - 0)  // key size too big
+#define QL_SOMEERROR                (START_QL_ERR - 0)
 #define QL_LASTERROR QL_SOMEERROR
 
 #endif // QL_H

@@ -600,17 +600,25 @@ static int mk_values(NODE *list, int max, Value values[]) {
  * mk_values: converts a single value node into a Value
  */
 static void mk_value(NODE *node, Value &value) {
-    value.type = node->u.VALUE.type;
-    switch (value.type) {
-    case INT:
-        value.data = (void *)&node->u.VALUE.ival;
-        break;
-    case FLOAT:
-        value.data = (void *)&node->u.VALUE.rval;
-        break;
-    case STRING:
-        value.data = (void *)node->u.VALUE.sval;
-        break;
+    if (node == NULL) {
+        value.type = VT_NULL;
+        value.data = NULL;
+    } else {
+        // value.type = node->u.VALUE.type;
+        switch (node->u.VALUE.type) {
+        case INT:
+            value.type = VT_INT;
+            value.data = (void *)&node->u.VALUE.ival;
+            break;
+        case FLOAT:
+            value.type = VT_FLOAT;
+            value.data = (void *)&node->u.VALUE.rval;
+            break;
+        case STRING:
+            value.type = VT_STRING;
+            value.data = (void *)node->u.VALUE.sval;
+            break;
+        }
     }
 }
 
@@ -898,6 +906,10 @@ static void print_relattr(NODE *n) {
 }
 
 static void print_value(NODE *n) {
+    if (n == NULL) {
+        printf(" NULL");
+        return;
+    }
     switch (n -> u.VALUE.type) {
     case INT:
         printf(" %d", n -> u.VALUE.ival);

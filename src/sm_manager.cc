@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <algorithm>
+#include <vector>
+#include <cassert>
 
 static const int kCwdLen = 256;
 
@@ -45,6 +47,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
 
     RID rid;
     int offset = 0;
+    std::vector<short> nullableOffsets;
     for (int i = 0; i < attrCount; ++i) {
         AttrCatEntry attrEntry;
         memset(&attrEntry, 0, sizeof attrEntry);
@@ -54,11 +57,16 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
         attrEntry.attrType = attributes[i].attrType;
         attrEntry.attrLength = attributes[i].attrLength;
         attrEntry.attrSpecs = attributes[i].attrSpecs;
+        if (!(attrEntry.attrSpecs & ATTR_SPEC_NOTNULL)) {
+            nullableOffsets.push_back(offset);
+        }
         if (attributes[i].attrType == INT) {
             offset += sizeof(int);
-        } else {
+        } else if (attributes[i].attrType == STRING) {
             // + 1 for terminating '\0'
             offset += upper_align<4>(attrEntry.attrLength + 1);
+        } else {
+            assert(false);
         }
         attrEntry.indexNo = -1;
         TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
@@ -75,7 +83,8 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     TRY(relcat.ForcePages());
     TRY(attrcat.ForcePages());
 
-    TRY(rmm->CreateFile(relName, relEntry.tupleLength));
+    TRY(rmm->CreateFile(relName, relEntry.tupleLength,
+                nullableOffsets.size(), &nullableOffsets[0]));
 
     return 0;
 }
@@ -270,7 +279,7 @@ RC SM_Manager::Help(const char *relName) {
 
     printer.PrintHeader(std::cout);
     for (int i = 0; i < attrCount; ++i)
-        printer.Print(std::cout, (char *)&attributes[i]);
+        printer.Print(std::cout, (char *)&attributes[i], NULL);
 
     printer.PrintFooter(std::cout);
 
@@ -294,8 +303,10 @@ RC SM_Manager::Print(const char *relName) {
     while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
         if (retcode) return retcode;
         char *data;
+        bool *isnull;
         TRY(rec.GetData(data));
-        printer.Print(std::cout, data);
+        TRY(rec.GetIsnull(isnull));
+        printer.Print(std::cout, data, isnull);
     }
     TRY(scan.CloseScan());
     TRY(rmm->CloseFile(fileHandle));
@@ -389,6 +400,7 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
         strcpy(attributes[i].attrName, attrEntry->attrName);
         attributes[i].offset = attrEntry->offset;
         attributes[i].attrType = attrEntry->attrType;
+        attributes[i].attrSpecs = attrEntry->attrSpecs;
         attributes[i].attrLength = attrEntry->attrLength;
         attributes[i].indexNo = attrEntry->indexNo;
         ++i;

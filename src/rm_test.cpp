@@ -865,38 +865,57 @@ RC Test8(void) {
     nr.num = 1;
     strncpy(nr.nstr, "notnull", STRLEN);
     // nr.ni = NULL
-    bool isnull_0[2] = {false, true};
-    TRY(fh.InsertRec((char*)&nr, rid, isnull_0));
+    bool isnull_1[2] = {false, true};
+    TRY(fh.InsertRec((char*)&nr, rid, isnull_1));
 
     nr.num = 2;
     // nr.nstr = NULL;
     nr.ni = 4;
-    bool isnull_1[2] = {true, false};
-    TRY(fh.InsertRec((char*)&nr, rid, isnull_1));
+    bool isnull_2[2] = {true, false};
+    TRY(fh.InsertRec((char*)&nr, rid, isnull_2));
+
+    nr.num = 3;
+    // nr.nstr = NULL
+    // nr.ni = NULL
+    bool isnull_3[2] = {true, true};
+    TRY(fh.InsertRec((char*)&nr, rid, isnull_3));
 
     RM_FileScan sc;
     RM_Record rec;
     NRec* nrp;
+    bool* isnullp;
 
     TRY(sc.OpenScan(fh, STRING, 0, offsetof(NRec, nstr),
                 NOTNULL_OP, NULL));
     TRY(sc.GetNextRec(rec));
     TRY(rec.GetData(CVOID(nrp)));
+    TRY(rec.GetIsnull(isnullp));
     CHECK(nrp->num == 1);
+    CHECK(!memcmp(isnullp, isnull_1, sizeof(isnull_1)));
     CHECK(sc.GetNextRec(rec) == RM_EOF);
     TRY(sc.CloseScan());
 
     TRY(sc.OpenScan(fh, INT, 0, offsetof(NRec, ni),
-                NOTNULL_OP, NULL));
+                ISNULL_OP, NULL));
     TRY(sc.GetNextRec(rec));
     TRY(rec.GetData(CVOID(nrp)));
-    CHECK(nrp->num == 2);
-    CHECK(nrp->ni == 4);
+    CHECK(nrp->num == 1);
+    TRY(sc.GetNextRec(rec));
+    TRY(rec.GetData(CVOID(nrp)));
+    CHECK(nrp->num == 3);
+    TRY(rec.GetIsnull(isnullp));
+    CHECK(!memcmp(isnullp, isnull_3, sizeof(isnull_3)));
     CHECK(sc.GetNextRec(rec) == RM_EOF);
     TRY(sc.CloseScan());
 
+    // a non-nullable column can not be NULL
+    TRY(sc.OpenScan(fh, INT, sizeof(int), offsetof(NRec, num),
+                ISNULL_OP, NULL));
+    CHECK(sc.GetNextRec(rec) == RM_EOF);
+    TRY(sc.CloseScan());
 
     TRY(rmm.CloseFile(fh));
+    TRY(rmm.DestroyFile((char *)FILENAME));
 
     LOG(INFO) << "test8 done";
 

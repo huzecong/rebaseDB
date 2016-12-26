@@ -34,6 +34,7 @@ class RM_Record {
     friend class RM_FileScan;
 
     char *pData;
+    bool *isnull;
     RID rid;
 public:
     RM_Record ();
@@ -43,10 +44,12 @@ public:
     RM_Record& operator=(const RM_Record&) = delete;
 
     void SetData(char *data, size_t size);
-    
+    void SetIsnull(bool* isnull, short nullableNum);
+
     // Return the data corresponding to the record.  Sets *pData to the
     // record contents.
     RC GetData(char *&pData) const;
+    RC GetIsnull(bool *&pData) const;
 
     // Return the RID associated with the record
     RC GetRid (RID &rid) const;
@@ -74,10 +77,10 @@ public:
     ~RM_FileHandle();
 
     // Given a RID, return the record
-    //   `isnull' gives the information for each nullable fields
-    RC GetRec     (const RID &rid, RM_Record &rec, bool *isnull = NULL) const;
+    RC GetRec     (const RID &rid, RM_Record &rec) const;
 
     // Insert a new record
+    //   `isnull' gives the information for each nullable fields
     RC InsertRec  (const char *pData, RID &rid, bool *isnull = NULL);
 
     RC DeleteRec  (const RID &rid);                    // Delete a record

@@ -14,7 +14,7 @@ RM_FileHandle::RM_FileHandle() {
 
 RM_FileHandle::~RM_FileHandle() {}
 
-RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec, bool* isnull) const {
+RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
     if (recordSize == 0) return RM_FILE_NOT_OPENED;
     PageNum pageNum;
     SlotNum slotNum;
@@ -30,11 +30,13 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec, bool* isnull) const {
     rec.rid = rid;
     rec.SetData(data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
 
-    if (isnull != NULL && nullableNum > 0) {
+    if (nullableNum > 0) {
+        bool* isnull = new bool[nullableNum];
         for (int i = 0; i < nullableNum; ++i) {
             isnull[i] = getBitMap(((RM_PageHeader *)data)->bitmap,
                     recordsPerPage + slotNum * nullableNum + i);
         }
+        rec.SetIsnull(isnull, nullableNum);
     }
 
     TRY(pfHandle.UnpinPage(pageNum));
@@ -132,6 +134,10 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
     TRY(pageHandle.GetData(data));
 
     memcpy(data, rec.pData, (size_t)recordSize);
+    for (int i = 0; i < nullableNum; ++i) {
+        setBitMap(((RM_PageHeader *)data)->bitmap, recordsPerPage +
+                slotNum * nullableNum + i, rec.isnull[i]);
+    }
 
     TRY(pfHandle.MarkDirty(pageNum));
     TRY(pfHandle.UnpinPage(pageNum));

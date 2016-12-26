@@ -99,9 +99,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
         currentSlotNum = 0;
     }
 
-    rec.rid = RID(currentPageNum, currentSlotNum);
-    rec.SetData(data + fileHandle->pageHeaderSize + recordSize * currentSlotNum,
-            (size_t)recordSize);
+    TRY(fileHandle->GetRec(RID(currentPageNum, currentSlotNum), rec));
     ++currentSlotNum;
     return 0;
 }

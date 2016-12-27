@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <vector>
 #include <cassert>
+#include <memory>
 
 static const int kCwdLen = 256;
 
@@ -46,7 +47,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     TRY(scan.CloseScan());
 
     RID rid;
-    int offset = 0;
+    short offset = 0;
     std::vector<short> nullableOffsets;
     for (int i = 0; i < attrCount; ++i) {
         AttrCatEntry attrEntry;
@@ -84,7 +85,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     TRY(attrcat.ForcePages());
 
     TRY(rmm->CreateFile(relName, relEntry.tupleLength,
-                nullableOffsets.size(), &nullableOffsets[0]));
+                        (short)nullableOffsets.size(), &nullableOffsets[0]));
 
     return 0;
 }
@@ -189,13 +190,14 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
     RelCatEntry relEntry;
     TRY(GetRelEntry(relName, relEntry));
     int attrCount;
-    DataAttrInfo *attributes;
-    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::unique_ptr<DataAttrInfo[]> _attributes;
+    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
+    DataAttrInfo *attributes = _attributes.get();
 
     RM_FileHandle fileHandle;
     RID rid;
-    char *data = new char[relEntry.tupleLength];
-    IX_IndexHandle *indexHandles = new IX_IndexHandle[attrCount];
+    ARR_PTR(data, char, relEntry.tupleLength);
+    ARR_PTR(indexHandles, IX_IndexHandle, attrCount);
     for (int i = 0; i < attrCount; ++i)
         if (attributes[i].indexNo != -1)
             TRY(ixm->OpenIndex(relName, attributes[i].indexNo, indexHandles[i]));
@@ -261,8 +263,6 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
 
     std::cout << cnt << " values loaded." << std::endl;
 
-    delete[] data;
-    delete[] indexHandles;
     return 0;
 }
 
@@ -272,10 +272,12 @@ RC SM_Manager::Help() {
 
 RC SM_Manager::Help(const char *relName) {
     int attrCount;
-    DataAttrInfo *attributes;
-    TRY(GetDataAttrInfo("attrcat", attrCount, attributes));
+    std::unique_ptr<DataAttrInfo[]> _attributes;
+    TRY(GetDataAttrInfo("attrcat", attrCount, _attributes));
+    DataAttrInfo *attributes = _attributes.get();
     Printer printer(attributes, attrCount);
-    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
+    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
+    attributes = _attributes.get();
 
     printer.PrintHeader(std::cout);
     for (int i = 0; i < attrCount; ++i)
@@ -288,8 +290,9 @@ RC SM_Manager::Help(const char *relName) {
 
 RC SM_Manager::Print(const char *relName) {
     int attrCount;
-    DataAttrInfo *attributes;
-    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::unique_ptr<DataAttrInfo[]> _attributes;
+    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
+    DataAttrInfo *attributes = _attributes.get();
 
     Printer printer(attributes, attrCount);
     printer.PrintHeader(std::cout);
@@ -378,7 +381,7 @@ RC SM_Manager::GetAttrCatEntry(const char *relName, const char *attrName, RM_Rec
     return 0;
 }
 
-RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo *&attributes, bool sort) {
+RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::unique_ptr<DataAttrInfo[]> &_attributes, bool sort) {
     RM_FileScan scan;
     RM_Record rec;
     RID rid;
@@ -387,7 +390,7 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
 
     TRY(GetRelEntry(relName, relEntry));
     attrCount = relEntry.attrCount;
-    attributes = new DataAttrInfo[attrCount];
+    ARR_PTR(attributes, DataAttrInfo, attrCount);
 
     TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
                       EQ_OP, (void *)relName));
@@ -412,6 +415,9 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo
         std::sort(attributes, attributes + attrCount,
                   [](const DataAttrInfo &a, const DataAttrInfo &b) { return a.offset < b.offset; });
     }
+
+    _attributes.reset(nullptr);
+    _attributes = std::move(__attributes__);
 
     return 0;
 }

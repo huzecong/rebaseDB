@@ -59,7 +59,7 @@ public:
 
     RC GetRelEntry(const char *relName, RelCatEntry &relEntry);
     RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry);
-    RC GetDataAttrInfo(const char *relName, int &attrCount, DataAttrInfo *&attributes, bool sort = false);
+    RC GetDataAttrInfo(const char *relName, int &attrCount, std::unique_ptr<DataAttrInfo[]> &attributes, bool sort = false);
 private:
     RC GetRelCatEntry(const char *relName, RM_Record &rec);
     RC GetAttrCatEntry(const char *relName, const char *attrName, RM_Record &rec);

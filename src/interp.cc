@@ -176,7 +176,7 @@ RC interp(NODE *n) {
     case N_USEDB: {
         char* relname = n->u.DB_OP.relname;
         if (strlen(relname) > MAXNAME) {
-            print_error((char*)"dropdb", E_TOOLONG);
+            print_error((char*)"usedb", E_TOOLONG);
             break;
         }
         if (db_opened) {

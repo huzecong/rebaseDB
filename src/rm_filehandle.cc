@@ -72,7 +72,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool* isnull) {
             TRY(pageHandle.GetData(data));
             *(RM_PageHeader *)data = {kLastFreeRecord, 0, kLastFreePage};
             memset(data + offsetof(RM_PageHeader, bitmap), 0,
-                    recordsPerPage * (nullableNum + 1));
+                   (size_t)(recordsPerPage * (nullableNum + 1)));
         }
         slotNum = ((RM_PageHeader *)data)->allocatedRecords;
         destination = data + pageHeaderSize + recordSize * slotNum;

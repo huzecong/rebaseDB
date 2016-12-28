@@ -59,7 +59,8 @@ public:
 
     RC GetRelEntry(const char *relName, RelCatEntry &relEntry);
     RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry);
-    RC GetDataAttrInfo(const char *relName, int &attrCount, std::unique_ptr<DataAttrInfo[]> &attributes, bool sort = false);
+    RC GetDataAttrInfo(const char *relName, int &attrCount, std::vector<DataAttrInfo> &attributes, bool sort = false);
+    std::string GenerateTempTableName(const std::string &prefix);
 private:
     RC GetRelCatEntry(const char *relName, RM_Record &rec);
     RC GetAttrCatEntry(const char *relName, const char *attrName, RM_Record &rec);
@@ -78,7 +79,6 @@ void SM_PrintError(RC rc);
 #define SM_INDEX_NOTEXIST        (START_SM_WARN + 4)
 #define SM_FILE_FORMAT_INCORRECT (START_SM_WARN + 5)
 #define SM_FILE_NOT_FOUND        (START_SM_WARN + 6)
-#define SM_STRING_ATTR_TOO_LONG  (START_SM_WARN + 7)
 #define SM_LASTWARN SM_FILE_NOT_FOUND
 
 

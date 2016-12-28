@@ -10,11 +10,18 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ostream>
 #include "redbase.h"
 #include "parser.h"
 #include "rm.h"
 #include "ix.h"
 #include "sm.h"
+#include "ql_queryplan.h"
+
+typedef std::pair<std::string, std::string> AttrTag;
+
+template <typename T>
+using AttrMap = std::map<AttrTag, T>;
 
 //
 // QL_Manager: query language (DML)
@@ -51,7 +58,12 @@ private:
     SM_Manager *pSmm;
     IX_Manager *pIxm;
     RM_Manager *pRmm;
+    
+    RC PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent = 0);
 
+    RC ExecuteQueryPlan(const QL_QueryPlan &queryPlan,
+                        const AttrMap<DataAttrInfo &> &attrMap,
+                        const AttrMap<Value> &valMap);
 };
 
 //
@@ -59,10 +71,12 @@ private:
 //
 void QL_PrintError(RC rc);
 
-#define QL_VALUES_NUM_NOT_MATCH     (START_QL_WARN + 0)
-#define QL_VALUES_TYPE_NOT_MATCH    (START_QL_WARN + 1)
+#define QL_ATTR_COUNT_MISMATCH      (START_QL_WARN + 0)
+#define QL_VALUE_TYPES_MISMATCH     (START_QL_WARN + 1)
 #define QL_STRING_VAL_TOO_LONG      (START_QL_WARN + 2)
-#define QL_LASTWARN QL_STRING_VAL_TOO_LONG
+#define QL_ATTR_NOTEXIST            (START_QL_WARN + 3)
+#define QL_ATTR_TYPES_MISMATCH      (START_QL_WARN + 4)
+#define QL_LASTWARN QL_ATTR_NOTEXIST
 
 #define QL_SOMEERROR                (START_QL_ERR - 0)
 #define QL_LASTERROR QL_SOMEERROR

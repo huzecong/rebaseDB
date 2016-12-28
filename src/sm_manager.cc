@@ -190,9 +190,8 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
     RelCatEntry relEntry;
     TRY(GetRelEntry(relName, relEntry));
     int attrCount;
-    std::unique_ptr<DataAttrInfo[]> _attributes;
-    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
-    DataAttrInfo *attributes = _attributes.get();
+    std::vector<DataAttrInfo> attributes;
+    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
 
     RM_FileHandle fileHandle;
     RID rid;
@@ -272,12 +271,10 @@ RC SM_Manager::Help() {
 
 RC SM_Manager::Help(const char *relName) {
     int attrCount;
-    std::unique_ptr<DataAttrInfo[]> _attributes;
-    TRY(GetDataAttrInfo("attrcat", attrCount, _attributes));
-    DataAttrInfo *attributes = _attributes.get();
+    std::vector<DataAttrInfo> attributes;
+    TRY(GetDataAttrInfo("attrcat", attrCount, attributes));
     Printer printer(attributes, attrCount);
-    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
-    attributes = _attributes.get();
+    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
 
     printer.PrintHeader(std::cout);
     for (int i = 0; i < attrCount; ++i)
@@ -290,9 +287,8 @@ RC SM_Manager::Help(const char *relName) {
 
 RC SM_Manager::Print(const char *relName) {
     int attrCount;
-    std::unique_ptr<DataAttrInfo[]> _attributes;
-    TRY(GetDataAttrInfo(relName, attrCount, _attributes, true));
-    DataAttrInfo *attributes = _attributes.get();
+    std::vector<DataAttrInfo> attributes;
+    TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
 
     Printer printer(attributes, attrCount);
     printer.PrintHeader(std::cout);
@@ -381,7 +377,7 @@ RC SM_Manager::GetAttrCatEntry(const char *relName, const char *attrName, RM_Rec
     return 0;
 }
 
-RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::unique_ptr<DataAttrInfo[]> &_attributes, bool sort) {
+RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<DataAttrInfo> &attributes, bool sort) {
     RM_FileScan scan;
     RM_Record rec;
     RID rid;
@@ -390,7 +386,8 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::unique_
 
     TRY(GetRelEntry(relName, relEntry));
     attrCount = relEntry.attrCount;
-    ARR_PTR(attributes, DataAttrInfo, attrCount);
+    attributes.clear();
+    attributes.resize((unsigned long)attrCount);
 
     TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
                       EQ_OP, (void *)relName));
@@ -412,14 +409,16 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::unique_
     if (i != attrCount) return SM_CATALOG_CORRUPT;
 
     if (sort) {
-        std::sort(attributes, attributes + attrCount,
+        std::sort(attributes.begin(), attributes.end(),
                   [](const DataAttrInfo &a, const DataAttrInfo &b) { return a.offset < b.offset; });
     }
-
-    _attributes.reset(nullptr);
-    _attributes = std::move(__attributes__);
-
+    
     return 0;
+}
+
+std::string SM_Manager::GenerateTempTableName(const std::string &prefix) {
+    static int tempTables = 0;
+    return prefix + + "_tmp_" + std::to_string(tempTables++);
 }
 
 #endif //REBASE_SM_MANAGER_H

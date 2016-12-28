@@ -692,6 +692,8 @@ void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm)
                bExit = TRUE;
          }
    }
+   
+   pSmm->CloseDb();
 }
 
 //

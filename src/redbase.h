@@ -118,6 +118,8 @@ typedef char Boolean;
 #define CVOID(_x) (*(reinterpret_cast<char**>(&(_x))))
 #define ARR_PTR(_name, _type, _size) \
     auto __##_name##__ = std::make_unique<_type[]>((size_t)_size); \
-    _type *_name = __##_name##__.get()
+    _type * _name = __##_name##__.get()
+//#define ARR_PTR(_name, _type, _size) \
+//    _type * _name = new _type[(size_t)_size]
 
 #endif

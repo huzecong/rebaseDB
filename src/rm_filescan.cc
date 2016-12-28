@@ -33,7 +33,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
                 break;
             case STRING:
                 this->value.stringVal = new char[attrLength + 1];
-                memcpy(this->value.stringVal, value, attrLength);
+                memcpy(this->value.stringVal, value, (size_t)attrLength);
                 // strncpy(this->value.stringVal, (char*)value, attrLength);
                 this->value.stringVal[attrLength] = '\0';
                 break;

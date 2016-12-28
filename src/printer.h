@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <cstring>
+#include <vector>
 #include "redbase.h"      // For definition of MAXNAME
 
 #define MAXPRINTSTRING  ((2*MAXNAME) + 5)
@@ -68,7 +69,7 @@ class Printer {
 public:
     // Constructor.  Takes as arguments an array of attributes along with
     // the length of the array.
-    Printer(const DataAttrInfo *attributes, const int attrCount);
+    Printer(const std::vector<DataAttrInfo> &attributes, const int attrCount);
     ~Printer();
 
     void PrintHeader(std::ostream &c) const;

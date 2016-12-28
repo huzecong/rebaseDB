@@ -38,7 +38,7 @@ void Spaces(int maxLength, int printedSoFar) {
 //      within sm.h
 //  attrCount - the number of attributes
 //
-Printer::Printer(const DataAttrInfo *attributes_, const int attrCount_) {
+Printer::Printer(const std::vector<DataAttrInfo> &attributes_, const int attrCount_) {
     attrCount = attrCount_;
     attributes = new DataAttrInfo[attrCount];
 

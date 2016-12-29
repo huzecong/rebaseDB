@@ -17,6 +17,10 @@ const char *QL_WarnMsg[] = {
     "number of values to insert does not match",
     "value type does not match",
     "string value too long",
+    "attribute does not exist",
+    "attribute types does not match",
+    "ambiguous attribute name",
+    "operation forbidden",
 };
 
 const char *QL_ErrorMsg[] = {

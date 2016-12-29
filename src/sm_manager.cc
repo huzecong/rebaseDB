@@ -6,14 +6,8 @@
 #define REBASE_SM_MANAGER_H
 
 #include "sm.h"
-#include "printer.h"
 
-#include <unistd.h>
-#include <stddef.h>
-#include <algorithm>
-#include <vector>
 #include <cassert>
-#include <memory>
 
 static const int kCwdLen = 256;
 
@@ -412,13 +406,13 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<
         std::sort(attributes.begin(), attributes.end(),
                   [](const DataAttrInfo &a, const DataAttrInfo &b) { return a.offset < b.offset; });
     }
-    
+
     return 0;
 }
 
 std::string SM_Manager::GenerateTempTableName(const std::string &prefix) {
     static int tempTables = 0;
-    return prefix + + "_tmp_" + std::to_string(tempTables++);
+    return prefix + "_tmp_" + std::to_string(tempTables++);
 }
 
 #endif //REBASE_SM_MANAGER_H

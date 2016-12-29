@@ -5,9 +5,6 @@
 #include "pf.h"
 #include "rm.h"
 
-#include "stddef.h"
-#include <cstring>
-
 /* RM Manager */
 RM_Manager::RM_Manager(PF_Manager &pfm) {
     this->pfm = &pfm;
@@ -16,7 +13,7 @@ RM_Manager::RM_Manager(PF_Manager &pfm) {
 RM_Manager::~RM_Manager() {}
 
 RC RM_Manager::CreateFile(const char *fileName, int recordSize,
-        short nullableNum, short *nullableOffsets) {
+                          short nullableNum, short *nullableOffsets) {
     if (recordSize > PF_PAGE_SIZE) {
         return RM_RECORDSIZE_TOO_LARGE;
     }
@@ -36,11 +33,11 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize,
     // total size = sizeof PageHeader + bitmap[ = records * (1 + nullable)] +
     //   records * recordSize
     short recordsPerPage = (PF_PAGE_SIZE - sizeof(RM_PageHeader)) /
-            (recordSize + nullableNum + 1);
+                           (recordSize + nullableNum + 1);
     if (upper_align<4>(recordsPerPage * (nullableNum + 1)) +
-            sizeof(RM_PageHeader) + recordSize * recordsPerPage > PF_PAGE_SIZE)
+        sizeof(RM_PageHeader) + recordSize * recordsPerPage > PF_PAGE_SIZE)
         --recordsPerPage;
-    fileHeader->recordSize = recordSize;
+    fileHeader->recordSize = (short)recordSize;
     fileHeader->recordsPerPage = recordsPerPage;
     fileHeader->nullableNum = nullableNum;
     fileHeader->firstFreePage = kLastFreePage;
@@ -56,7 +53,7 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize,
 
     *pageHeader = {kLastFreeRecord, 0, kLastFreePage};
     memset(pageHeader + offsetof(RM_PageHeader, bitmap), 0,
-            recordsPerPage * (nullableNum + 1));
+           (size_t)(recordsPerPage * (nullableNum + 1)));
 
     TRY(fileHandle.MarkDirty(1));
     TRY(fileHandle.UnpinPage(1));
@@ -115,7 +112,7 @@ RC RM_Manager::CloseFile(RM_FileHandle &fileHandle) {
         for (int i = 0; i < fileHandle.nullableNum; ++i) {
             header->nullableOffsets[i] = fileHandle.nullableOffsets[i];
         }
-        delete [] fileHandle.nullableOffsets;
+        delete[] fileHandle.nullableOffsets;
 
         TRY(fileHandle.pfHandle.MarkDirty(0));
         TRY(fileHandle.pfHandle.UnpinPage(0));

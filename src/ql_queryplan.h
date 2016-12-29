@@ -5,13 +5,40 @@
 #ifndef REBASE_QL_QUERYPLAN_H
 #define REBASE_QL_QUERYPLAN_H
 
+typedef std::pair<std::string, std::string> AttrTag;
+
+template <typename T>
+using AttrMap = std::map<AttrTag, T>;
+
+struct AttrRecordInfo {
+    AttrTag tag;
+    int offset;                // Offset of attribute
+    AttrType attrType;         // Type of attribute
+    int attrLength;            // Length of attribute
+    int attrSpecs;             // Attribute specifications
+    int indexNo;               // Index number of attribute
+
+    AttrRecordInfo() = default;
+
+    AttrRecordInfo(const DataAttrInfo &info) {
+        tag = AttrTag(info.relName, info.attrName);
+        offset = info.offset;
+        attrType = info.attrType;
+        attrLength = info.attrLength;
+        attrSpecs = info.attrSpecs;
+        indexNo = info.indexNo;
+    }
+};
+
 struct QL_Condition {
+//    AttrRecordInfo lhsAttr;
     DataAttrInfo lhsAttr;
     CompOp op;
     bool bRhsIsAttr;
+//    AttrRecordInfo rhsAttr;
     DataAttrInfo rhsAttr;
     Value rhsValue;
-    
+
     friend std::ostream &operator <<(std::ostream &os, const QL_Condition &condition);
 };
 
@@ -25,13 +52,13 @@ enum QueryPlanType {
 struct QL_QueryPlan {
     QueryPlanType type;
     std::string relName;
-    
-    std::string attrName;
-    std::vector<QL_Condition> conds;
+
+    std::string indexAttrName;
+    QL_Condition indexCondition;
+    std::vector<QL_Condition> conditions;
     std::vector<std::string> projection;
-    typedef std::vector<QL_QueryPlan> InnerLoopType;
-    std::shared_ptr<InnerLoopType> innerLoop;
-    
+    std::shared_ptr<QL_QueryPlan> innerLoop;
+
     std::string tempSaveName;
 };
 

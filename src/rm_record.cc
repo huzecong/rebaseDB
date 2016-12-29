@@ -11,24 +11,24 @@ RM_Record::RM_Record() {
 
 RM_Record::~RM_Record() {
     if (pData != NULL) {
-        delete [] pData;
+        delete[] pData;
     }
     if (isnull != NULL) {
-        delete [] isnull;
+        delete[] isnull;
     }
 }
 
 void RM_Record::SetData(char *data, size_t size) {
     if (pData != NULL) {
-        delete [] pData;
+        delete[] pData;
     }
     pData = new char[size];
     memcpy(pData, data, size);
 }
 
-void RM_Record::SetIsnull(bool* isnull, short nullableNum) {
+void RM_Record::SetIsnull(bool *isnull, short nullableNum) {
     if (this->isnull != NULL) {
-        delete [] this->isnull;
+        delete[] this->isnull;
     }
     this->isnull = new bool[nullableNum];
     memcpy(this->isnull, isnull, nullableNum * sizeof(bool));

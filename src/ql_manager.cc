@@ -34,13 +34,15 @@ inline AttrTag make_tag(const RelAttr &info) {
     if (__iter__##_name == attrMap.end()) return QL_ATTR_NOTEXIST; \
     DataAttrInfo &_name = __iter__##_name->second;
 
-RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, const char *const *relations, int nConditions, const Condition *conditions) {
+RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
+                      int nRelations, const char *const *relations,
+                      int nConditions, const Condition *conditions) {
     // open files
     ARR_PTR(fileHandles, RM_FileHandle, nRelations);
     for (int i = 0; i < nRelations; ++i)
         TRY(pRmm->OpenFile(relations[i], fileHandles[i]));
     VLOG(1) << "files opened";
-    
+
     /**
      * Check if query is valid
      */
@@ -65,15 +67,17 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
                 attrMap[std::make_pair(std::string(), attrName)] = attrInfo[i][j];
         }
     VLOG(1) << "attribute name mapping created";
-              
+
     // check selected attributes exist
     if (nSelAttrs == 1 && !strcmp(selAttrs[0].attrName, "*"))
         nSelAttrs = 0;
     for (int i = 0; i < nSelAttrs; ++i) {
         DEFINE_ATTRINFO(_, make_tag(selAttrs[i]));
+        if (selAttrs[i].relName == NULL && attrNameCount[std::string(selAttrs[i].attrName)] > 1)
+            return QL_AMBIGUOUS_ATTR_NAME;
     }
     VLOG(1) << "all attributes exist";
-    
+
     // check conditions are valid
     for (int i = 0; i < nConditions; ++i) {
         DEFINE_ATTRINFO(lhsAttr, make_tag(conditions[i].lhsAttr));
@@ -88,16 +92,17 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         }
     }
     VLOG(1) << "all conditions are valid";
-    
+
     /**
      * Generate query plan
      */
     std::vector<QL_QueryPlan> queryPlans;
-    
+    std::vector<std::string> temporaryTables;
+
     std::map<std::string, int> relNumMap;
     for (int i = 0; i < nRelations; ++i)
         relNumMap[std::string(relations[i])] = i;
-    
+
     // build target projections
     ARR_PTR(targetProjections, std::vector<std::string>, nRelations);
     if (nSelAttrs == 0) {
@@ -111,7 +116,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         }
     }
     VLOG(1) << "target projections built";
-    
+
     // gather simple conditions and projections for each table
     ARR_PTR(simpleConditions, std::vector<QL_Condition>, nRelations);
     std::vector<QL_Condition> complexConditions;
@@ -146,7 +151,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         }
     }
     VLOG(1) << "simple conditions and projections gathered";
-    
+
     // select and projections related to single relations
     ARR_PTR(filteredRefName, std::string, nRelations);
     for (int i = 0; i < nRelations; ++i) {
@@ -159,7 +164,8 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
             plan.type = QP_SCAN;
             plan.relName = relName;
             plan.tempSaveName = filteredRefName[i];
-            plan.conds = relCond;
+            temporaryTables.push_back(plan.tempSaveName);
+            plan.conditions = relCond;
             for (auto attrName : simpleProjections[relNum])
                 plan.projection.push_back(attrName);
             queryPlans.push_back(plan);
@@ -168,7 +174,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         }
     }
     VLOG(1) << "query plan part 1 (simple statements) generated";
-    
+
     // part relations related by conditions and join separately
     QL_Graph graph(nRelations);
     ARR_PTR(relatedConditions, std::vector<QL_Condition>, nRelations);
@@ -180,7 +186,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         relatedConditions[b].push_back(condition);
     }
     VLOG(1) << "relation graph built";
-    
+
     std::vector<std::string> descartesProductRelations;
     for (auto block : graph) {
         QL_QueryPlan root, child;
@@ -188,22 +194,22 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         root.relName = filteredRefName[block[0]];
         root.projection = targetProjections[block[0]];
         root.tempSaveName = pSmm->GenerateTempTableName("joined_block");
-        auto innerLoop = std::shared_ptr<QL_QueryPlan::InnerLoopType>(nullptr);
+        temporaryTables.push_back(root.tempSaveName);
+        auto innerLoop = std::shared_ptr<QL_QueryPlan>(nullptr);
         for (int i = (int)block.size() - 1; i > 0; --i) {
             child.type = QP_SCAN;
             child.relName = filteredRefName[block[i]];
             child.projection = targetProjections[block[i]];
-            child.conds = relatedConditions[block[i]];
+            child.conditions = relatedConditions[block[i]];
             child.innerLoop = innerLoop;
-            innerLoop = std::make_shared<QL_QueryPlan::InnerLoopType>();
-            innerLoop.get()->push_back(child);
+            innerLoop = std::make_shared<QL_QueryPlan>(child);
         }
         root.innerLoop = innerLoop;
         descartesProductRelations.push_back(root.tempSaveName);
         queryPlans.push_back(root);
     }
     VLOG(1) << "query plan part 2 (non-descartes-product-joins) generated";
-    
+
     // join unrelated relations (unfiltered descartes product)
     std::string finalRelName = descartesProductRelations[0];
     if (descartesProductRelations.size() > 1) {
@@ -211,25 +217,25 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         root.type = QP_SCAN;
         root.relName = descartesProductRelations[0];
         root.tempSaveName = pSmm->GenerateTempTableName("final");
+        temporaryTables.push_back(root.tempSaveName);
         finalRelName = root.tempSaveName;
-        auto innerLoop = std::shared_ptr<QL_QueryPlan::InnerLoopType>(nullptr);
+        auto innerLoop = std::shared_ptr<QL_QueryPlan>(nullptr);
         for (int i = (int)descartesProductRelations.size() - 1; i > 0; --i) {
             child.type = QP_SCAN;
             child.relName = descartesProductRelations[i];
             child.innerLoop = innerLoop;
-            innerLoop = std::make_shared<QL_QueryPlan::InnerLoopType>();
-            innerLoop.get()->push_back(child);
+            innerLoop = std::make_shared<QL_QueryPlan>(child);
         }
         root.innerLoop = innerLoop;
         queryPlans.push_back(root);
     }
     VLOG(1) << "query plan part 3 (descartes product join) generated";
-    
+
     QL_QueryPlan final;
     final.type = QP_FINAL;
     final.relName = finalRelName;
     queryPlans.push_back(final);
-    
+
     // print and execute plan
     if (bQueryPlans) {
         for (auto plan : queryPlans) {
@@ -238,9 +244,16 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs, int nRelations, co
         }
     }
     VLOG(1) << "query plan printed";
-//    for (auto plan : queryPlans)
-//        TRY(ExecuteQueryPlan(plan, attrMap, AttrMap<Value>));
-    
+
+    for (auto plan : queryPlans) {
+
+    }
+
+    // purge temporary tables
+//    for (auto relName : temporaryTables)
+//        TRY(pSmm->DropTable(relName.c_str()));
+//    VLOG(1) << "temporary tables purged";
+
     return 0;
 }
 
@@ -308,9 +321,9 @@ RC QL_Manager::PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent) {
         case QP_SCAN:
             std::cout << prefix;
             std::cout << "SCAN " << queryPlan.relName;
-            if (queryPlan.conds.size() > 0) {
+            if (queryPlan.conditions.size() > 0) {
                 std::cout << " FILTER:" << std::endl;
-                for (auto cond : queryPlan.conds)
+                for (auto cond : queryPlan.conditions)
                     std::cout << prefix << " - " << cond << std::endl;
             } else {
                 std::cout << std::endl;
@@ -322,10 +335,8 @@ RC QL_Manager::PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent) {
                     std::cout << " " << attrName;
                 std::cout << std::endl;
             }
-            if (queryPlan.innerLoop != nullptr) {
-                for (auto plan : *queryPlan.innerLoop)
-                    TRY(PrintQueryPlan(plan, indent + 4));
-            }
+            if (queryPlan.innerLoop != nullptr)
+                TRY(PrintQueryPlan(*queryPlan.innerLoop, indent + 4));
             if (queryPlan.tempSaveName != "") {
                 std::cout << prefix;
                 std::cout << "=> SAVING AS " << queryPlan.tempSaveName;
@@ -335,9 +346,9 @@ RC QL_Manager::PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent) {
         case QP_SEARCH:
             std::cout << prefix;
             std::cout << "SEARCH " << queryPlan.relName;
-            std::cout << " USING INDEX ON " << queryPlan.attrName;
-            assert(queryPlan.conds.size() == 1);
-            std::cout << " FILTER: " << queryPlan.conds[0] << std::endl;
+            std::cout << " USING INDEX ON " << queryPlan.indexAttrName;
+            assert(queryPlan.conditions.size() == 1);
+            std::cout << " FILTER: " << queryPlan.conditions[0] << std::endl;
             if (queryPlan.projection.size() > 0) {
                 std::cout << prefix;
                 std::cout << "> PROJECTION:";
@@ -353,7 +364,7 @@ RC QL_Manager::PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent) {
             break;
         case QP_AUTOINDEX:
             std::cout << prefix;
-            std::cout << "CREATE AUTO INDEX FOR " << queryPlan.relName << "(" << queryPlan.attrName << ")";
+            std::cout << "CREATE AUTO INDEX FOR " << queryPlan.relName << "(" << queryPlan.indexAttrName << ")";
             std::cout << std::endl;
             break;
         case QP_FINAL:
@@ -365,11 +376,17 @@ RC QL_Manager::PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent) {
     return 0;
 }
 
-RC QL_Manager::ExecuteQueryPlan(const QL_QueryPlan &queryPlan, const AttrMap<DataAttrInfo &> &attrMap, const AttrMap<Value> &valMap) {
+RC QL_Manager::ExecuteQueryPlan(const QL_QueryPlan &queryPlan,
+                                const std::vector<RM_FileHandle> &fileHandles,
+                                const std::vector<AttrRecordInfo> &attrInfo,
+                                const std::vector<void *> &outerLoopData,
+                                char *recordData) {
     return 0;
 }
 
 RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
+    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+
     RelCatEntry relEntry;
     TRY(pSmm->GetRelEntry(relName, relEntry));
     int attrCount;
@@ -389,7 +406,7 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
             return QL_VALUE_TYPES_MISMATCH;
         }
     }
-    
+
     ARR_PTR(data, char, relEntry.tupleLength);
     ARR_PTR(isnull, bool, nullableNum);
     int nullableIndex = 0;
@@ -421,22 +438,255 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
             }
         }
     }
-    
+
     RM_FileHandle fh;
     RID rid;
-    
+
     TRY(pRmm->OpenFile(relName, fh));
     TRY(fh.InsertRec(data, rid, isnull));
     TRY(pRmm->CloseFile(fh));
-    
+
+    return 0;
+}
+
+bool checkSatisfy(char *data, bool isnull, const QL_Condition &condition) {
+    switch (condition.op) {
+        case NO_OP:
+            return true;
+        case ISNULL_OP:
+            return isnull;
+        case NOTNULL_OP:
+            return !isnull;
+        default:
+            break;
+    }
+    if (isnull) return false;
+
+    char *_lhs = data + condition.lhsAttr.offset;
+    char *_rhs = condition.bRhsIsAttr ? data + condition.rhsAttr.offset : (char *)condition.rhsValue.data;
+
+    switch (condition.lhsAttr.attrType) {
+        case INT: {
+            int lhs = *(int *)_lhs;
+            int rhs = *(int *)_rhs;
+            switch (condition.op) {
+                case EQ_OP:
+                    return lhs == rhs;
+                case NE_OP:
+                    return lhs != rhs;
+                case LT_OP:
+                    return lhs < rhs;
+                case GT_OP:
+                    return lhs > rhs;
+                case LE_OP:
+                    return lhs <= rhs;
+                case GE_OP:
+                    return lhs >= rhs;
+                default:
+                    CHECK(false);
+            }
+        }
+        case FLOAT: {
+            float lhs = *(float *)_lhs;
+            float rhs = *(float *)_rhs;
+            switch (condition.op) {
+                case EQ_OP:
+                    return lhs == rhs;
+                case NE_OP:
+                    return lhs != rhs;
+                case LT_OP:
+                    return lhs < rhs;
+                case GT_OP:
+                    return lhs > rhs;
+                case LE_OP:
+                    return lhs <= rhs;
+                case GE_OP:
+                    return lhs >= rhs;
+                default:
+                    CHECK(false);
+            }
+        }
+        case STRING: {
+            char *lhs = (char *)_lhs;
+            char *rhs = (char *)_rhs;
+            switch (condition.op) {
+                case EQ_OP:
+                    return strcmp(lhs, rhs) == 0;
+                case NE_OP:
+                    return strcmp(lhs, rhs) != 0;
+                case LT_OP:
+                    return strcmp(lhs, rhs) < 0;
+                case GT_OP:
+                    return strcmp(lhs, rhs) > 0;
+                case LE_OP:
+                    return strcmp(lhs, rhs) <= 0;
+                case GE_OP:
+                    return strcmp(lhs, rhs) >= 0;
+                default:
+                    CHECK(false);
+            }
+        }
+    }
+    return false;
+}
+
+RC checkAttrBelongsToRel(const RelAttr &relAttr, const char *relName) {
+    if (relAttr.relName == NULL || !strcmp(relName, relAttr.relName)) return 0;
+    return QL_ATTR_NOTEXIST;
+}
+
+RC QL_Manager::checkConditionsValid(const char *relName, int nConditions, const Condition *conditions,
+                                    const std::map<std::string, DataAttrInfo> &attrMap,
+                                    std::vector<QL_Condition> &retConditions) {
+    // check conditions are valid
+    for (int i = 0; i < nConditions; ++i) {
+        TRY(checkAttrBelongsToRel(conditions[i].lhsAttr, relName));
+        if (conditions[i].bRhsIsAttr)
+            TRY(checkAttrBelongsToRel(conditions[i].rhsAttr, relName));
+        auto iter = attrMap.find(conditions[i].lhsAttr.attrName);
+        if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
+        const DataAttrInfo &lhsAttr = iter->second;
+
+        QL_Condition cond;
+        cond.lhsAttr = lhsAttr;
+        cond.op = conditions[i].op;
+        cond.bRhsIsAttr = (bool)conditions[i].bRhsIsAttr;
+
+        bool nullable = ((lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) == 0);
+        if (conditions[i].bRhsIsAttr) {
+            iter = attrMap.find(conditions[i].rhsAttr.attrName);
+            if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
+            const DataAttrInfo &rhsAttr = iter->second;
+            if (lhsAttr.attrType != rhsAttr.attrType)
+                return QL_ATTR_TYPES_MISMATCH;
+            cond.rhsAttr = rhsAttr;
+        } else {
+            if (!can_assign_to(lhsAttr.attrType, conditions[i].rhsValue.type, nullable))
+                return QL_VALUE_TYPES_MISMATCH;
+            cond.rhsValue = conditions[i].rhsValue;
+        }
+
+        retConditions.push_back(cond);
+    }
+    VLOG(1) << "all conditions are valid";
+
     return 0;
 }
 
 RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *conditions) {
+    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+
+    int attrCount;
+    std::vector<DataAttrInfo> attributes;
+    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::map<std::string, DataAttrInfo> attrMap;
+    for (auto info : attributes)
+        attrMap[info.attrName] = info;
+
+    std::vector<QL_Condition> conds;
+    TRY(checkConditionsValid(relName, nConditions, conditions, attrMap, conds));
+
+    RM_FileHandle fileHandle;
+    TRY(pRmm->OpenFile(relName, fileHandle));
+    RM_FileScan scan;
+    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
+    RM_Record record;
+    RC retcode;
+    int cnt = 0;
+    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
+        VLOG(1);
+        if (retcode) return retcode;
+        char *data;
+        bool *isnull;
+        TRY(record.GetData(data));
+        TRY(record.GetIsnull(isnull));
+        bool shouldDelete = true;
+        for (int i = 0; i < nConditions && shouldDelete; ++i)
+            shouldDelete = checkSatisfy(data, isnull ? *isnull : false, conds[i]);
+        if (shouldDelete) {
+            ++cnt;
+            RID rid;
+            TRY(record.GetRid(rid));
+            TRY(fileHandle.DeleteRec(rid));
+        }
+    }
+    TRY(scan.CloseScan());
+    TRY(pRmm->CloseFile(fileHandle));
+
+    std::cout << cnt << " tuple(s) deleted." << std::endl;
+
     return 0;
 }
 
-RC QL_Manager::Update(const char *relName, const RelAttr &updAttr, const int bIsValue, const RelAttr &rhsRelAttr, const Value &rhsValue, int nConditions,
-                      const Condition *conditions) {
+RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
+                      const int bIsValue, const RelAttr &rhsRelAttr, const Value &rhsValue,
+                      int nConditions, const Condition *conditions) {
+    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+
+    TRY(checkAttrBelongsToRel(updAttr, relName));
+    if (!bIsValue)
+        TRY(checkAttrBelongsToRel(rhsRelAttr, relName));
+
+    int attrCount;
+    std::vector<DataAttrInfo> attributes;
+    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::map<std::string, DataAttrInfo> attrMap;
+    for (auto info : attributes)
+        attrMap[info.attrName] = info;
+
+    std::vector<QL_Condition> conds;
+    TRY(checkConditionsValid(relName, nConditions, conditions, attrMap, conds));
+
+    DataAttrInfo &updAttrInfo = attrMap[updAttr.attrName];
+    DataAttrInfo &valueAttrInfo = attrMap[rhsRelAttr.attrName];
+    VLOG(1) << updAttrInfo.attrType << " " << updAttrInfo.offset << " " << updAttrInfo.attrLength;
+
+    RM_FileHandle fileHandle;
+    TRY(pRmm->OpenFile(relName, fileHandle));
+    RM_FileScan scan;
+    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
+    RM_Record record;
+    RC retcode;
+    int cnt = 0;
+    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
+        VLOG(1) << "next rec";
+        if (retcode) return retcode;
+        char *data;
+        bool *isnull;
+        TRY(record.GetData(data));
+        TRY(record.GetIsnull(isnull));
+        bool shouldUpdate = true;
+        for (int i = 0; i < nConditions && shouldUpdate; ++i)
+            shouldUpdate = checkSatisfy(data, isnull ? *isnull : false, conds[i]);
+        if (shouldUpdate) {
+            ++cnt;
+            if (rhsValue.type == VT_NULL) {
+                assert(isnull);
+                *isnull = true;
+            } else {
+                VLOG(1) << "update";
+                if (isnull) *isnull = false;
+                void *value = bIsValue ? rhsValue.data : data + valueAttrInfo.offset;
+                switch (updAttrInfo.attrType) {
+                    case INT:
+                        *(int *)(data + updAttrInfo.offset) = *(int *)value;
+                        break;
+                    case FLOAT:
+                        *(float *)(data + updAttrInfo.offset) = *(float *)value;
+                        break;
+                    case STRING:
+                        strcpy(data + updAttrInfo.offset, (char *)value);
+                        break;
+                }
+            }
+            TRY(fileHandle.UpdateRec(record));
+            VLOG(1) << "update end";
+        }
+    }
+    TRY(scan.CloseScan());
+    TRY(pRmm->CloseFile(fileHandle));
+
+    std::cout << cnt << " tuple(s) updated." << std::endl;
+
     return 0;
 }

@@ -31,10 +31,10 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
     rec.SetData(data + pageHeaderSize + recordSize * slotNum, (size_t)recordSize);
 
     if (nullableNum > 0) {
-        bool* isnull = new bool[nullableNum];
+        bool *isnull = new bool[nullableNum];
         for (int i = 0; i < nullableNum; ++i) {
             isnull[i] = getBitMap(((RM_PageHeader *)data)->bitmap,
-                    recordsPerPage + slotNum * nullableNum + i);
+                                  recordsPerPage + slotNum * nullableNum + i);
         }
         rec.SetIsnull(isnull, nullableNum);
     }
@@ -43,7 +43,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
     return 0;
 }
 
-RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool* isnull) {
+RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool *isnull) {
     if (recordSize == 0) return RM_FILE_NOT_OPENED;
     PageNum pageNum;
     SlotNum slotNum;
@@ -81,8 +81,8 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool* isnull) {
     ++((RM_PageHeader *)data)->allocatedRecords;
     setBitMap(((RM_PageHeader *)data)->bitmap, slotNum, true);
     for (int i = 0; i < nullableNum; ++i) {
-        setBitMap(((RM_PageHeader *)data)->bitmap, recordsPerPage +
-                slotNum * nullableNum + i, isnull[i]);
+        setBitMap(((RM_PageHeader *)data)->bitmap,
+                  recordsPerPage + slotNum * nullableNum + i, isnull[i]);
     }
     rid = RID(pageNum, slotNum);
 
@@ -133,10 +133,10 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
     TRY(pfHandle.GetThisPage(pageNum, pageHandle));
     TRY(pageHandle.GetData(data));
 
-    memcpy(data, rec.pData, (size_t)recordSize);
+    memcpy(data + pageHeaderSize + recordSize * slotNum, rec.pData, (size_t)recordSize);
     for (int i = 0; i < nullableNum; ++i) {
-        setBitMap(((RM_PageHeader *)data)->bitmap, recordsPerPage +
-                slotNum * nullableNum + i, rec.isnull[i]);
+        setBitMap(((RM_PageHeader *)data)->bitmap,
+                  recordsPerPage + slotNum * nullableNum + i, rec.isnull[i]);
     }
 
     TRY(pfHandle.MarkDirty(pageNum));

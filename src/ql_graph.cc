@@ -30,7 +30,7 @@ QL_Graph::~QL_Graph() {
 void QL_Graph::findBlocks() {
     bool *v = new bool[n];
     memset(v, 0, sizeof(bool) * n);
-    
+
     for (int i = 0; i < n; ++i) {
         if (v[i]) continue;
         std::vector<int> current;
@@ -46,7 +46,7 @@ void QL_Graph::findBlocks() {
         }
         blocks.push_back(current);
     }
-    
+
     delete[] v;
     foundBlocks = true;
 }

@@ -18,11 +18,6 @@
 #include "sm.h"
 #include "ql_queryplan.h"
 
-typedef std::pair<std::string, std::string> AttrTag;
-
-template <typename T>
-using AttrMap = std::map<AttrTag, T>;
-
 //
 // QL_Manager: query language (DML)
 //
@@ -58,12 +53,18 @@ private:
     SM_Manager *pSmm;
     IX_Manager *pIxm;
     RM_Manager *pRmm;
-    
+
+    RC checkConditionsValid(const char *relName, int nConditions, const Condition *conditions,
+                            const std::map<std::string, DataAttrInfo> &attrMap,
+                            std::vector<QL_Condition> &retConditions);
+
     RC PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent = 0);
 
     RC ExecuteQueryPlan(const QL_QueryPlan &queryPlan,
-                        const AttrMap<DataAttrInfo &> &attrMap,
-                        const AttrMap<Value> &valMap);
+                        const std::vector<RM_FileHandle> &fileHandles,
+                        const std::vector<AttrRecordInfo> &attrInfo,
+                        const std::vector<void *> &outerLoopData,
+                        char *recordData);
 };
 
 //
@@ -76,7 +77,9 @@ void QL_PrintError(RC rc);
 #define QL_STRING_VAL_TOO_LONG      (START_QL_WARN + 2)
 #define QL_ATTR_NOTEXIST            (START_QL_WARN + 3)
 #define QL_ATTR_TYPES_MISMATCH      (START_QL_WARN + 4)
-#define QL_LASTWARN QL_ATTR_NOTEXIST
+#define QL_AMBIGUOUS_ATTR_NAME      (START_QL_WARN + 5)
+#define QL_FORBIDDEN                (START_QL_WARN + 6)
+#define QL_LASTWARN QL_FORBIDDEN
 
 #define QL_SOMEERROR                (START_QL_ERR - 0)
 #define QL_LASTERROR QL_SOMEERROR

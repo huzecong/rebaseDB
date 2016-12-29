@@ -4,7 +4,6 @@
 
 #include "rm.h"
 
-#include <cstring>
 #include <cassert>
 
 RM_FileScan::RM_FileScan() {
@@ -82,8 +81,8 @@ RC RM_FileScan::GetNextRec(RM_Record &rec) {
             bool isnull = false;
             if (nullableIndex != -1) {
                 isnull = getBitMap(((RM_PageHeader *)data)->bitmap,
-                        fileHandle->recordsPerPage +
-                        currentSlotNum * fileHandle->nullableNum + nullableIndex);
+                                   fileHandle->recordsPerPage +
+                                   currentSlotNum * fileHandle->nullableNum + nullableIndex);
             }
             if (checkSatisfy(pData, isnull)) {
                 found = true;
@@ -113,12 +112,14 @@ RC RM_FileScan::CloseScan() {
 }
 
 bool RM_FileScan::checkSatisfy(char *data, bool isnull) {
+    if (compOp == NO_OP) return true;
     if (compOp == ISNULL_OP) {
         return isnull;
     }
     if (compOp == NOTNULL_OP) {
         return !isnull;
     }
+    if (isnull) return false;
     switch (attrType) {
         case INT: {
             int curVal = *(int *)(data + attrOffset);
@@ -185,4 +186,5 @@ bool RM_FileScan::checkSatisfy(char *data, bool isnull) {
         }
     }
     assert(0);
+    return false;
 }

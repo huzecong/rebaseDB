@@ -706,7 +706,7 @@ ostream &operator<<(ostream &s, const DataAttrInfo &ai)
       << " attrType=" << 
       (ai.attrType == INT ? "INT" :
        ai.attrType == FLOAT ? "FLOAT" : "STRING")
-      << " attrLength=" << ai.attrLength;
+      << " attrDisplayLength=" << ai.attrDisplayLength;
 }
 
 ostream &operator<<(ostream &s, const RelAttr &qa)

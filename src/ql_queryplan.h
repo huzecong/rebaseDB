@@ -11,22 +11,27 @@ template <typename T>
 using AttrMap = std::map<AttrTag, T>;
 
 struct AttrRecordInfo {
-    AttrTag tag;
+    std::string relName;
+    std::string attrName;
     int offset;                // Offset of attribute
     AttrType attrType;         // Type of attribute
     int attrLength;            // Length of attribute
     int attrSpecs;             // Attribute specifications
     int indexNo;               // Index number of attribute
+    bool nullable;
+    int nullableIndex;
 
     AttrRecordInfo() = default;
 
     AttrRecordInfo(const DataAttrInfo &info) {
-        tag = AttrTag(info.relName, info.attrName);
+        relName = info.relName;
+        attrName = info.attrName;
         offset = info.offset;
         attrType = info.attrType;
-        attrLength = info.attrLength;
+        attrLength = info.attrDisplayLength;
         attrSpecs = info.attrSpecs;
         indexNo = info.indexNo;
+        nullable = (info.attrSpecs & ATTR_SPEC_NOTNULL) == 0;
     }
 };
 

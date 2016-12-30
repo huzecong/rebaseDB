@@ -12,6 +12,7 @@ struct RelCatEntry {
     int tupleLength;           // tuple length in bytes
     int attrCount;             // number of attributes
     int indexCount;            // number of indexed attributes (not decreased when index is dropped)
+    int recordCount;           // number of records in the relation
 };
 
 struct AttrCatEntry {
@@ -19,7 +20,8 @@ struct AttrCatEntry {
     char attrName[MAXNAME + 1]; // attribute name
     int offset;                 // offset in bytes from beginning of tuple
     AttrType attrType;          // attribute type
-    int attrLength;             // attribute length
+    int attrSize;               // attribute size
+    int attrDisplayLength;             // attribute length
                                 //     for INT columns the length is only used to format display
                                 //     for STRING columns the length does NOT include '\0'
     int attrSpecs;              // attribute specification(s)

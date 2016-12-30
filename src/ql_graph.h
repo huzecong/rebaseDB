@@ -25,7 +25,7 @@ public:
 
     void insertEdge(int a, int b);
 
-    typedef decltype(blocks)::iterator iterator;
+    typedef std::vector<std::vector<int>>::iterator iterator;
     iterator begin();
     iterator end();
 };

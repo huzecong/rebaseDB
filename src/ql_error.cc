@@ -21,6 +21,7 @@ const char *QL_WarnMsg[] = {
     "attribute types does not match",
     "ambiguous attribute name",
     "operation forbidden",
+    "attribute should not be null",
 };
 
 const char *QL_ErrorMsg[] = {

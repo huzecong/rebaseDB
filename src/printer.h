@@ -35,9 +35,11 @@ struct DataAttrInfo {
         strcpy (attrName, d.attrName);
         offset = d.offset;
         attrType = d.attrType;
-        attrLength = d.attrLength;
+        attrSize = d.attrSize;
+        attrDisplayLength = d.attrDisplayLength;
         attrSpecs = d.attrSpecs;
         indexNo = d.indexNo;
+        nullableIndex = d.nullableIndex;
     };
 
     DataAttrInfo& operator=(const DataAttrInfo &d) {
@@ -46,9 +48,11 @@ struct DataAttrInfo {
             strcpy (attrName, d.attrName);
             offset = d.offset;
             attrType = d.attrType;
-            attrLength = d.attrLength;
+            attrSize = d.attrSize;
+            attrDisplayLength = d.attrDisplayLength;
             attrSpecs = d.attrSpecs;
             indexNo = d.indexNo;
+            nullableIndex = d.nullableIndex;
         }
         return (*this);
     };
@@ -57,9 +61,11 @@ struct DataAttrInfo {
     char     attrName[MAXNAME + 1]; // Attribute name
     int      offset;                // Offset of attribute
     AttrType attrType;              // Type of attribute
-    int      attrLength;            // Length of attribute
+    int      attrSize;              // Size of attribute
+    int      attrDisplayLength;     // Length of attribute
     int      attrSpecs;             // Attribute specifications
     int      indexNo;               // Index number of attribute
+    int      nullableIndex;         // Index on the nullable bitmap
 };
 
 // Print some number of spaces
@@ -69,7 +75,7 @@ class Printer {
 public:
     // Constructor.  Takes as arguments an array of attributes along with
     // the length of the array.
-    Printer(const std::vector<DataAttrInfo> &attributes, const int attrCount);
+    Printer(const std::vector<DataAttrInfo> &attributes);
     ~Printer();
 
     void PrintHeader(std::ostream &c) const;

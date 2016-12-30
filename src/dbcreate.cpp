@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
     // Adding relation metadata of relcat and attrcat
     const char *(relName[MAXNAME + 1]) = {"relcat", "attrcat"};
     const char *(attrName[MAXNAME + 1]) = {
-            "relName", "tupleLength", "attrCount", "indexCount",
-            "relName", "attrName", "offset", "attrType", "attrLength", "attrSpecs", "indexNo"
+            "relName", "tupleLength", "attrCount", "indexCount", "recordCount",
+            "relName", "attrName", "offset", "attrType", "attrSize", "attrDisplayLength", "attrSpecs", "indexNo"
     };
 
     RM_FileHandle handle;
@@ -89,13 +89,13 @@ int main(int argc, char *argv[]) {
 
     memcpy(relEntry.relName, relName[0], MAXNAME + 1);
     relEntry.tupleLength = sizeof(RelCatEntry);
-    relEntry.attrCount = 4;
+    relEntry.attrCount = 5;
     relEntry.indexCount = 0;
     handle.InsertRec((const char *)&relEntry, rid);
 
     memcpy(relEntry.relName, relName[1], MAXNAME + 1);
     relEntry.tupleLength = sizeof(AttrCatEntry);
-    relEntry.attrCount = 7;
+    relEntry.attrCount = 8;
     relEntry.indexCount = 0;
     handle.InsertRec((const char *)&relEntry, rid);
 
@@ -111,12 +111,12 @@ int main(int argc, char *argv[]) {
     memcpy(attrEntry.attrName, attrName[0], MAXNAME + 1);
     attrEntry.offset = offsetof(RelCatEntry, relName);
     attrEntry.attrType = STRING;
-    attrEntry.attrLength = MAXNAME + 1;
+    attrEntry.attrDisplayLength = MAXNAME + 1;
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[1], MAXNAME + 1);
     attrEntry.offset = offsetof(RelCatEntry, tupleLength);
     attrEntry.attrType = INT;
-    attrEntry.attrLength = sizeof(int);
+    attrEntry.attrDisplayLength = sizeof(int);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[2], MAXNAME + 1);
     attrEntry.offset = offsetof(RelCatEntry, attrCount);
@@ -124,31 +124,37 @@ int main(int argc, char *argv[]) {
     memcpy(attrEntry.attrName, attrName[3], MAXNAME + 1);
     attrEntry.offset = offsetof(RelCatEntry, indexCount);
     handle.InsertRec((const char *)&attrEntry, rid);
+    memcpy(attrEntry.attrName, attrName[4], MAXNAME + 1);
+    attrEntry.offset = offsetof(RelCatEntry, recordCount);
+    handle.InsertRec((const char *)&attrEntry, rid);
 
     memcpy(attrEntry.relName, relName[1], MAXNAME + 1);
-    memcpy(attrEntry.attrName, attrName[4], MAXNAME + 1);
+    memcpy(attrEntry.attrName, attrName[5], MAXNAME + 1);
     attrEntry.offset = offsetof(AttrCatEntry, relName);
     attrEntry.attrType = STRING;
-    attrEntry.attrLength = MAXNAME + 1;
-    handle.InsertRec((const char *)&attrEntry, rid);
-    memcpy(attrEntry.attrName, attrName[5], MAXNAME + 1);
-    attrEntry.offset = offsetof(AttrCatEntry, attrName);
+    attrEntry.attrDisplayLength = MAXNAME + 1;
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[6], MAXNAME + 1);
-    attrEntry.offset = offsetof(AttrCatEntry, offset);
-    attrEntry.attrType = INT;
-    attrEntry.attrLength = sizeof(int);
+    attrEntry.offset = offsetof(AttrCatEntry, attrName);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[7], MAXNAME + 1);
-    attrEntry.offset = offsetof(AttrCatEntry, attrType);
+    attrEntry.offset = offsetof(AttrCatEntry, offset);
+    attrEntry.attrType = INT;
+    attrEntry.attrDisplayLength = sizeof(int);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[8], MAXNAME + 1);
-    attrEntry.offset = offsetof(AttrCatEntry, attrLength);
+    attrEntry.offset = offsetof(AttrCatEntry, attrType);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[9], MAXNAME + 1);
-    attrEntry.offset = offsetof(AttrCatEntry, attrSpecs);
+    attrEntry.offset = offsetof(AttrCatEntry, attrSize);
     handle.InsertRec((const char *)&attrEntry, rid);
     memcpy(attrEntry.attrName, attrName[10], MAXNAME + 1);
+    attrEntry.offset = offsetof(AttrCatEntry, attrDisplayLength);
+    handle.InsertRec((const char *)&attrEntry, rid);
+    memcpy(attrEntry.attrName, attrName[11], MAXNAME + 1);
+    attrEntry.offset = offsetof(AttrCatEntry, attrSpecs);
+    handle.InsertRec((const char *)&attrEntry, rid);
+    memcpy(attrEntry.attrName, attrName[12], MAXNAME + 1);
     attrEntry.offset = offsetof(AttrCatEntry, indexNo);
     handle.InsertRec((const char *)&attrEntry, rid);
 

@@ -38,8 +38,8 @@ void Spaces(int maxLength, int printedSoFar) {
 //      within sm.h
 //  attrCount - the number of attributes
 //
-Printer::Printer(const std::vector<DataAttrInfo> &attributes_, const int attrCount_) {
-    attrCount = attrCount_;
+Printer::Printer(const std::vector<DataAttrInfo> &attributes_) {
+    attrCount = attributes_.size();
     attributes = new DataAttrInfo[attrCount];
 
     for (int i = 0; i < attrCount; i++)
@@ -81,7 +81,7 @@ Printer::Printer(const std::vector<DataAttrInfo> &attributes_, const int attrCou
             strcpy(psHeader[i], attributes[i].attrName);
 
         if (attributes[i].attrType == STRING)
-            spaces[i] = min(attributes[i].attrLength, MAXPRINTSTRING);
+            spaces[i] = min(attributes[i].attrDisplayLength, MAXPRINTSTRING);
         else
             spaces[i] = max(12, (int)strlen(psHeader[i]));
 
@@ -177,19 +177,19 @@ void Printer::Print(ostream &c, const void * const data[], bool isnull[]) {
 
             const char* str_to_print = this_isnull ? "NULL" : (char *)data[i];
 
-            if (attributes[i].attrLength > MAXPRINTSTRING) {
+            if (attributes[i].attrDisplayLength > MAXPRINTSTRING) {
                 strncpy(str, str_to_print, MAXPRINTSTRING - 1);
                 str[MAXPRINTSTRING - 3] = '.';
                 str[MAXPRINTSTRING - 2] = '.';
                 c << str;
                 Spaces(MAXPRINTSTRING, strlen(str));
             } else {
-                strncpy(str, str_to_print, attributes[i].attrLength);
+                strncpy(str, str_to_print, attributes[i].attrDisplayLength);
                 c << str;
-                if (attributes[i].attrLength < (int) strlen(psHeader[i]))
+                if (attributes[i].attrDisplayLength < (int) strlen(psHeader[i]))
                     Spaces(strlen(psHeader[i]), strlen(str));
                 else
-                    Spaces(attributes[i].attrLength, strlen(str));
+                    Spaces(attributes[i].attrDisplayLength, strlen(str));
             }
         } else if (attributes[i].attrType == INT) {
             memcpy (&a, data[i], sizeof(int));
@@ -246,19 +246,19 @@ void Printer::Print(ostream &c, const char * const data, bool isnull[]) {
 
             const char* str_to_print = this_isnull ? "NULL" : data + attributes[i].offset;
 
-            if (attributes[i].attrLength > MAXPRINTSTRING) {
+            if (attributes[i].attrDisplayLength > MAXPRINTSTRING) {
                 strncpy(str, str_to_print, MAXPRINTSTRING - 1);
                 str[MAXPRINTSTRING - 3] = '.';
                 str[MAXPRINTSTRING - 2] = '.';
                 c << str;
                 Spaces(MAXPRINTSTRING, strlen(str));
             } else {
-                strncpy(str, str_to_print, attributes[i].attrLength);
+                strncpy(str, str_to_print, this_isnull ? 5 : attributes[i].attrDisplayLength);
                 c << str;
-                if (attributes[i].attrLength < (int) strlen(psHeader[i]))
+                if (attributes[i].attrDisplayLength < (int) strlen(psHeader[i]))
                     Spaces(strlen(psHeader[i]), strlen(str));
                 else
-                    Spaces(attributes[i].attrLength, strlen(str));
+                    Spaces(attributes[i].attrDisplayLength, strlen(str));
             }
         } else if (attributes[i].attrType == INT) {
             memcpy (&a, (data + attributes[i].offset), sizeof(int));

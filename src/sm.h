@@ -61,6 +61,8 @@ public:
     RC GetAttrEntry(const char *relName, const char *attrName, AttrCatEntry &attrEntry);
     RC GetDataAttrInfo(const char *relName, int &attrCount, std::vector<DataAttrInfo> &attributes, bool sort = false);
     std::string GenerateTempTableName(const std::string &prefix);
+    RC UpdateRelEntry(const char *relName, const RelCatEntry &relEntry);
+    RC UpdateAttrEntry(const char *relName, const char *attrName, const AttrCatEntry &attrEntry);
 private:
     RC GetRelCatEntry(const char *relName, RM_Record &rec);
     RC GetAttrCatEntry(const char *relName, const char *attrName, RM_Record &rec);

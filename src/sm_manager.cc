@@ -7,8 +7,6 @@
 
 #include "sm.h"
 
-#include <cassert>
-
 static const int kCwdLen = 256;
 
 SM_Manager::SM_Manager(IX_Manager &ixm_, RM_Manager &rmm_) {
@@ -50,19 +48,13 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
         strcpy(attrEntry.attrName, attributes[i].attrName);
         attrEntry.offset = offset;
         attrEntry.attrType = attributes[i].attrType;
-        attrEntry.attrLength = attributes[i].attrLength;
+        // + 1 for terminating '\0'
+        attrEntry.attrSize = attributes[i].attrType == STRING ? attributes[i].attrLength + 1 : 4;
+        attrEntry.attrDisplayLength = attributes[i].attrLength;
         attrEntry.attrSpecs = attributes[i].attrSpecs;
-        if (!(attrEntry.attrSpecs & ATTR_SPEC_NOTNULL)) {
+        if (!(attrEntry.attrSpecs & ATTR_SPEC_NOTNULL))
             nullableOffsets.push_back(offset);
-        }
-        if (attributes[i].attrType == INT) {
-            offset += sizeof(int);
-        } else if (attributes[i].attrType == STRING) {
-            // + 1 for terminating '\0'
-            offset += upper_align<4>(attrEntry.attrLength + 1);
-        } else {
-            assert(false);
-        }
+        offset += upper_align<4>(attrEntry.attrSize);
         attrEntry.indexNo = -1;
         TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
     }
@@ -73,6 +65,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     relEntry.tupleLength = offset;
     relEntry.attrCount = attrCount;
     relEntry.indexCount = 0;
+    relEntry.recordCount = 0;
     TRY(relcat.InsertRec((const char *)&relEntry, rid));
 
     TRY(relcat.ForcePages());
@@ -134,7 +127,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
     RM_FileHandle fileHandle;
     RM_FileScan scan;
     RM_Record rec;
-    TRY(ixm->CreateIndex(relName, indexNo, attrEntry->attrType, attrEntry->attrLength));
+    TRY(ixm->CreateIndex(relName, indexNo, attrEntry->attrType, attrEntry->attrSize));
     TRY(rmm->OpenFile(relName, fileHandle));
     TRY(ixm->OpenIndex(relName, indexNo, indexHandle));
     TRY(scan.OpenScan(fileHandle, INT, sizeof(int), 0, NO_OP, NULL));
@@ -190,6 +183,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
     RM_FileHandle fileHandle;
     RID rid;
     ARR_PTR(data, char, relEntry.tupleLength);
+    ARR_PTR(isnull, bool, relEntry.attrCount);
     ARR_PTR(indexHandles, IX_IndexHandle, attrCount);
     for (int i = 0; i < attrCount; ++i)
         if (attributes[i].indexNo != -1)
@@ -211,43 +205,57 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
                 return SM_FILE_FORMAT_INCORRECT;
             }
             buffer[q] = 0;
-            switch (attributes[i].attrType) {
-                case INT: {
-                    char *end = NULL;
-                    *(int *)(data + attributes[i].offset) = strtol(buffer + p, &end, 10);
-                    if (end == data + attributes[i].offset) {
-                        std::cerr << cnt + 1 << ":" << q << " " << "incorrect integer" << std::endl;
-                        return SM_FILE_FORMAT_INCORRECT;
-                    }
-                    break;
+            if (p == q) {  // null value
+                if (attributes[i].attrSpecs & ATTR_SPEC_NOTNULL) {
+                    LOG(INFO) << cnt + 1 << ":" << p << " " << "null value for non-nullable attribute" << std::endl;
+                    return SM_FILE_FORMAT_INCORRECT;
                 }
-                case FLOAT: {
-                    char *end = NULL;
-                    *(float *)(data + attributes[i].offset) = strtof(buffer + p, &end);
-                    if (end == data + attributes[i].offset) {
-                        std::cerr << cnt + 1 << ":" << q << " " << "incorrect float" << std::endl;
-                        return SM_FILE_FORMAT_INCORRECT;
+                isnull[attributes[i].nullableIndex] = true;
+            } else {
+                if (!(attributes[i].attrSpecs & ATTR_SPEC_NOTNULL))
+                    isnull[attributes[i].nullableIndex] = false;
+                switch (attributes[i].attrType) {
+                    case INT: {
+                        char *end = NULL;
+                        *(int *)(data + attributes[i].offset) = strtol(buffer + p, &end, 10);
+                        if (end == data + attributes[i].offset) {
+                            std::cerr << cnt + 1 << ":" << q << " " << "incorrect integer" << std::endl;
+                            return SM_FILE_FORMAT_INCORRECT;
+                        }
+                        break;
                     }
-                    break;
-                }
-                case STRING: {
-                    if (q - p > attributes[i].attrLength) {
-                        std::cerr << cnt + 1 << ":" << q << " " << "string too long" << std::endl;
-                        return SM_FILE_FORMAT_INCORRECT;
+                    case FLOAT: {
+                        char *end = NULL;
+                        *(float *)(data + attributes[i].offset) = strtof(buffer + p, &end);
+                        if (end == data + attributes[i].offset) {
+                            std::cerr << cnt + 1 << ":" << q << " " << "incorrect float" << std::endl;
+                            return SM_FILE_FORMAT_INCORRECT;
+                        }
+                        break;
                     }
-                    strcpy(data + attributes[i].offset, buffer + p);
-                    break;
+                    case STRING: {
+                        if (q - p > attributes[i].attrDisplayLength) {
+                            std::cerr << cnt + 1 << ":" << q << " " << "string too long" << std::endl;
+                            return SM_FILE_FORMAT_INCORRECT;
+                        }
+                        strcpy(data + attributes[i].offset, buffer + p);
+                        break;
+                    }
                 }
             }
             p = q + 1;
         }
-        TRY(fileHandle.InsertRec(data, rid));
+        TRY(fileHandle.InsertRec(data, rid, isnull));
         for (int i = 0; i < attrCount; ++i) {
             if (attributes[i].indexNo != -1)
                 TRY(indexHandles[i].InsertEntry(data + attributes[i].offset, rid));
         }
         ++cnt;
     }
+    VLOG(1) << "file loaded";
+
+    relEntry.recordCount = cnt;
+    TRY(UpdateRelEntry(relName, relEntry));
 
     for (int i = 0; i < attrCount; ++i)
         if (attributes[i].indexNo != -1)
@@ -267,7 +275,7 @@ RC SM_Manager::Help(const char *relName) {
     int attrCount;
     std::vector<DataAttrInfo> attributes;
     TRY(GetDataAttrInfo("attrcat", attrCount, attributes));
-    Printer printer(attributes, attrCount);
+    Printer printer(attributes);
     TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
 
     printer.PrintHeader(std::cout);
@@ -284,7 +292,7 @@ RC SM_Manager::Print(const char *relName) {
     std::vector<DataAttrInfo> attributes;
     TRY(GetDataAttrInfo(relName, attrCount, attributes, true));
 
-    Printer printer(attributes, attrCount);
+    Printer printer(attributes);
     printer.PrintHeader(std::cout);
 
     RM_FileHandle fileHandle;
@@ -371,6 +379,32 @@ RC SM_Manager::GetAttrCatEntry(const char *relName, const char *attrName, RM_Rec
     return 0;
 }
 
+RC SM_Manager::UpdateRelEntry(const char *relName, const RelCatEntry &relEntry) {
+    RM_Record rec;
+    char *data;
+
+    TRY(GetRelCatEntry(relName, rec));
+    TRY(rec.GetData(data));
+    *(RelCatEntry *)data = relEntry;
+    TRY(relcat.UpdateRec(rec));
+    TRY(relcat.ForcePages());
+
+    return 0;
+}
+
+RC SM_Manager::UpdateAttrEntry(const char *relName, const char *attrName, const AttrCatEntry &attrEntry) {
+    RM_Record rec;
+    char *data;
+
+    TRY(GetAttrCatEntry(relName, attrName, rec));
+    TRY(rec.GetData(data));
+    *(AttrCatEntry *)data = attrEntry;
+    TRY(attrcat.UpdateRec(rec));
+    TRY(attrcat.ForcePages());
+
+    return 0;
+}
+
 RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<DataAttrInfo> &attributes, bool sort) {
     RM_FileScan scan;
     RM_Record rec;
@@ -386,7 +420,7 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<
     TRY(scan.OpenScan(attrcat, STRING, MAXNAME + 1, offsetof(AttrCatEntry, relName),
                       EQ_OP, (void *)relName));
     RC retcode;
-    int i = 0;
+    int i = 0, nullableIndex = 0;
     while ((retcode = scan.GetNextRec(rec)) != RM_EOF) {
         if (retcode) return retcode;
         TRY(rec.GetData((char *&)attrEntry));
@@ -395,8 +429,15 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<
         attributes[i].offset = attrEntry->offset;
         attributes[i].attrType = attrEntry->attrType;
         attributes[i].attrSpecs = attrEntry->attrSpecs;
-        attributes[i].attrLength = attrEntry->attrLength;
+        attributes[i].attrSize = attrEntry->attrSize;
+        attributes[i].attrDisplayLength = attrEntry->attrDisplayLength;
         attributes[i].indexNo = attrEntry->indexNo;
+        if ((attrEntry->attrSpecs & ATTR_SPEC_NOTNULL) == 0) {
+            attributes[i].nullableIndex = nullableIndex++;
+        } else {
+            attributes[i].nullableIndex = -1;
+        }
+//        VLOG(1) << attributes[i].attrName << " " << attributes[i].attrSpecs << " " << attributes[i].nullableIndex;
         ++i;
     }
     TRY(scan.CloseScan());

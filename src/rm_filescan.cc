@@ -55,7 +55,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
         }
     }
     if (nullableIndex == -1) {
-        VLOG(1) << "given offset was not found to be a nullable field.";
+        VLOG(2) << "given offset was not found to be a nullable field.";
     }
     currentPageNum = 1;
     currentSlotNum = 0;

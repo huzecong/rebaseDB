@@ -41,6 +41,9 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     ARR_PTR(fileHandles, RM_FileHandle, nRelations);
     for (int i = 0; i < nRelations; ++i)
         TRY(pRmm->OpenFile(relations[i], fileHandles[i]));
+    ARR_PTR(relEntries, RelCatEntry, nRelations);
+    for (int i = 0; i < nRelations; ++i)
+        TRY(pSmm->GetRelEntry(relations[i], relEntries[i]));
     VLOG(1) << "files opened";
 
     /**
@@ -94,8 +97,139 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     VLOG(1) << "all conditions are valid";
 
     /**
-     * Generate query plan
+     * Naïve nested-loop join
      */
+    std::map<std::string, int> relNumMap;
+    for (int i = 0; i < nRelations; ++i)
+        relNumMap[std::string(relations[i])] = i;
+    std::vector<QL_Condition> conds;
+    ARR_PTR(lhsAttrRelIndex, int, nConditions);
+    ARR_PTR(rhsAttrRelIndex, int, nConditions);
+    for (int i = 0; i < nConditions; ++i) {
+        DataAttrInfo &lhsAttr = attrMap[make_tag(conditions[i].lhsAttr)];
+        lhsAttrRelIndex[i] = relNumMap[lhsAttr.relName];
+        QL_Condition cond;
+        cond.lhsAttr = lhsAttr;
+        cond.op = conditions[i].op;
+        cond.bRhsIsAttr = (bool)conditions[i].bRhsIsAttr;
+        if (conditions[i].bRhsIsAttr) {
+            DataAttrInfo &rhsAttr = attrMap[make_tag(conditions[i].rhsAttr)];
+            rhsAttrRelIndex[i] = relNumMap[rhsAttr.relName];
+            cond.rhsAttr = rhsAttr;
+        } else {
+            cond.rhsValue = conditions[i].rhsValue;
+        }
+        conds.push_back(cond);
+    }
+    ARR_PTR(fileScans, RM_FileScan, nRelations);
+    ARR_PTR(records, RM_Record, nRelations);
+    ARR_PTR(data, char *, nRelations);
+    ARR_PTR(isnull, bool *, nRelations);
+    VLOG(1) << "conditions processed";
+
+    std::vector<DataAttrInfo> projections((unsigned long)nSelAttrs);
+    std::vector<DataAttrInfo> finalHeaders((unsigned long)nSelAttrs);
+    ARR_PTR(selAttrRelIndex, int, nSelAttrs);
+    int finalRecordSize = 0, nullableIndex = 0;
+    for (int i = 0; i < nSelAttrs; ++i) {
+        projections[i] = attrMap[make_tag(selAttrs[i])];
+        finalHeaders[i] = projections[i];
+        finalHeaders[i].offset = finalRecordSize;
+        selAttrRelIndex[i] = relNumMap[projections[i].relName];
+        finalRecordSize += upper_align<4>(projections[i].attrSize);
+        if ((projections[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0) {
+            finalHeaders[i].nullableIndex = nullableIndex++;
+        } else {
+            finalHeaders[i].nullableIndex = -1;
+        }
+    }
+    ARR_PTR(finalRecordData, char, finalRecordSize);
+    ARR_PTR(finalRecordIsnull, bool, nullableIndex);
+    VLOG(1) << "projections processed";
+
+    int sumRecords = 1;
+    for (int i = 0; i < nRelations; ++i)
+        sumRecords *= relEntries[i].recordCount;
+    VLOG(1) << "sumRecords=" << sumRecords;
+
+//    VLOG(1) << finalRecordSize;
+//    for (int i = 0; i < nSelAttrs; ++i) {
+//        VLOG(1) << selAttrRelIndex[i] << " " << projections[i].offset << " " << projections[i].attrSize;
+//        VLOG(1) << finalHeaders[i].offset << " " << finalHeaders[i].nullableIndex;
+//    }
+
+    Printer printer(finalHeaders);
+    printer.PrintHeader(std::cout);
+    int ptr = 0;
+    int cnt = 0;
+    TRY(fileScans[ptr].OpenScan(fileHandles[0], INT, 4, 0, NO_OP, NULL));
+    while (true) {
+        int retcode = RM_EOF;
+        while (retcode == RM_EOF && ptr >= 0) {
+            retcode = fileScans[ptr].GetNextRec(records[ptr]);
+            if (retcode == RM_EOF) {
+                TRY(fileScans[ptr].CloseScan());
+                --ptr;
+            } else if (retcode != 0) return retcode;
+        }
+        if (ptr < 0) break;
+        TRY(records[ptr].GetData(data[ptr]));
+        TRY(records[ptr].GetIsnull(isnull[ptr]));
+        while (ptr + 1 < nRelations) {
+            ++ptr;
+            TRY(fileScans[ptr].OpenScan(fileHandles[ptr], INT, 4, 0, NO_OP, NULL));
+            TRY(fileScans[ptr].GetNextRec(records[ptr]));
+            TRY(records[ptr].GetData(data[ptr]));
+            TRY(records[ptr].GetIsnull(isnull[ptr]));
+        }
+        ++cnt;
+        if (cnt % (sumRecords / 100) == 0) {
+            std::cout << "\r";
+            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords;
+            fflush(stdout);
+        }
+        bool satisfy = true;
+        for (int i = 0; i < nConditions && satisfy; ++i) {
+            if (conds[i].bRhsIsAttr) {
+                satisfy = checkSatisfy(data[lhsAttrRelIndex[i]] + conds[i].lhsAttr.offset,
+                                       !(conds[i].lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[lhsAttrRelIndex[i]][conds[i].lhsAttr.nullableIndex] : false,
+                                       data[rhsAttrRelIndex[i]] + conds[i].rhsAttr.offset,
+                                       !(conds[i].rhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[rhsAttrRelIndex[i]][conds[i].rhsAttr.nullableIndex] : false,
+                                       conds[i]);
+            } else {
+                satisfy = checkSatisfy(data[lhsAttrRelIndex[i]] + conds[i].lhsAttr.offset,
+                                       !(conds[i].lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[lhsAttrRelIndex[i]][conds[i].lhsAttr.nullableIndex] : false,
+                                       (char *)conds[i].rhsValue.data,
+                                       conds[i].rhsValue.type == VT_NULL,
+                                       conds[i]);
+            }
+        }
+
+        if (satisfy) {
+            for (int i = 0; i < nSelAttrs; ++i) {
+                memcpy(finalRecordData + finalHeaders[i].offset,
+                       data[selAttrRelIndex[i]] + projections[i].offset,
+                       (size_t)projections[i].attrSize);
+                if ((projections[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0)
+                    finalRecordIsnull[finalHeaders[i].nullableIndex] = isnull[selAttrRelIndex[i]][projections[i].nullableIndex];
+            }
+            std::cout << "\r";
+            printer.Print(std::cout, finalRecordData, finalRecordIsnull);
+            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords;
+            fflush(stdout);
+        }
+    }
+    printer.PrintFooter(std::cout);
+
+    VLOG(1) << cnt << " records processed";
+    VLOG(1) << sumRecords << " records in total";
+    assert(cnt == sumRecords);
+
+    return 0;
+
+    /**
+     * Generate query plan
+     *
     std::vector<QL_QueryPlan> queryPlans;
     std::vector<std::string> temporaryTables;
 
@@ -255,6 +389,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
 //    VLOG(1) << "temporary tables purged";
 
     return 0;
+    */
 }
 
 #undef DEFINE_ATTRINFO
@@ -386,9 +521,9 @@ RC QL_Manager::ExecuteQueryPlan(const QL_QueryPlan &queryPlan,
 
 RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
-
     RelCatEntry relEntry;
     TRY(pSmm->GetRelEntry(relName, relEntry));
+
     int attrCount;
     bool kSort = true;
     std::vector<DataAttrInfo> attributes;
@@ -432,7 +567,7 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
             }
             case STRING: {
                 char *src = (char *)value;
-                if (strlen(src) > attr.attrLength) return QL_STRING_VAL_TOO_LONG;
+                if (strlen(src) > attr.attrDisplayLength) return QL_STRING_VAL_TOO_LONG;
                 strcpy(dest, src);
                 break;
             }
@@ -446,29 +581,29 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     TRY(fh.InsertRec(data, rid, isnull));
     TRY(pRmm->CloseFile(fh));
 
+    ++relEntry.recordCount;
+    TRY(pSmm->UpdateRelEntry(relName, relEntry));
+
     return 0;
 }
 
-bool checkSatisfy(char *data, bool isnull, const QL_Condition &condition) {
+bool QL_Manager::checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition) {
     switch (condition.op) {
         case NO_OP:
             return true;
         case ISNULL_OP:
-            return isnull;
+            return lhsIsnull;
         case NOTNULL_OP:
-            return !isnull;
+            return !lhsIsnull;
         default:
             break;
     }
-    if (isnull) return false;
-
-    char *_lhs = data + condition.lhsAttr.offset;
-    char *_rhs = condition.bRhsIsAttr ? data + condition.rhsAttr.offset : (char *)condition.rhsValue.data;
+    if (lhsIsnull || rhsIsnull) return false;
 
     switch (condition.lhsAttr.attrType) {
         case INT: {
-            int lhs = *(int *)_lhs;
-            int rhs = *(int *)_rhs;
+            int lhs = *(int *)lhsData;
+            int rhs = *(int *)rhsData;
             switch (condition.op) {
                 case EQ_OP:
                     return lhs == rhs;
@@ -487,8 +622,8 @@ bool checkSatisfy(char *data, bool isnull, const QL_Condition &condition) {
             }
         }
         case FLOAT: {
-            float lhs = *(float *)_lhs;
-            float rhs = *(float *)_rhs;
+            float lhs = *(float *)lhsData;
+            float rhs = *(float *)rhsData;
             switch (condition.op) {
                 case EQ_OP:
                     return lhs == rhs;
@@ -507,8 +642,8 @@ bool checkSatisfy(char *data, bool isnull, const QL_Condition &condition) {
             }
         }
         case STRING: {
-            char *lhs = (char *)_lhs;
-            char *rhs = (char *)_rhs;
+            char *lhs = lhsData;
+            char *rhs = rhsData;
             switch (condition.op) {
                 case EQ_OP:
                     return strcmp(lhs, rhs) == 0;
@@ -530,12 +665,28 @@ bool checkSatisfy(char *data, bool isnull, const QL_Condition &condition) {
     return false;
 }
 
+bool QL_Manager::checkSatisfy(char *data, bool *isnull, const QL_Condition &condition) {
+    if (condition.bRhsIsAttr) {
+        return checkSatisfy(data + condition.lhsAttr.offset,
+                            !(condition.lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[condition.lhsAttr.nullableIndex] : false,
+                            data + condition.rhsAttr.offset,
+                            !(condition.rhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[condition.rhsAttr.nullableIndex] : false,
+                            condition);
+    } else {
+        return checkSatisfy(data + condition.lhsAttr.offset,
+                            !(condition.lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[condition.lhsAttr.nullableIndex] : false,
+                            (char *)condition.rhsValue.data,
+                            condition.rhsValue.type == VT_NULL,
+                            condition);
+    }
+}
+
 RC checkAttrBelongsToRel(const RelAttr &relAttr, const char *relName) {
     if (relAttr.relName == NULL || !strcmp(relName, relAttr.relName)) return 0;
     return QL_ATTR_NOTEXIST;
 }
 
-RC QL_Manager::checkConditionsValid(const char *relName, int nConditions, const Condition *conditions,
+RC QL_Manager::CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
                                     const std::map<std::string, DataAttrInfo> &attrMap,
                                     std::vector<QL_Condition> &retConditions) {
     // check conditions are valid
@@ -575,6 +726,8 @@ RC QL_Manager::checkConditionsValid(const char *relName, int nConditions, const 
 
 RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *conditions) {
     if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+    RelCatEntry relEntry;
+    TRY(pSmm->GetRelEntry(relName, relEntry));
 
     int attrCount;
     std::vector<DataAttrInfo> attributes;
@@ -584,7 +737,7 @@ RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *con
         attrMap[info.attrName] = info;
 
     std::vector<QL_Condition> conds;
-    TRY(checkConditionsValid(relName, nConditions, conditions, attrMap, conds));
+    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
 
     RM_FileHandle fileHandle;
     TRY(pRmm->OpenFile(relName, fileHandle));
@@ -602,7 +755,7 @@ RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *con
         TRY(record.GetIsnull(isnull));
         bool shouldDelete = true;
         for (int i = 0; i < nConditions && shouldDelete; ++i)
-            shouldDelete = checkSatisfy(data, isnull ? *isnull : false, conds[i]);
+            shouldDelete = checkSatisfy(data, isnull, conds[i]);
         if (shouldDelete) {
             ++cnt;
             RID rid;
@@ -613,6 +766,8 @@ RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *con
     TRY(scan.CloseScan());
     TRY(pRmm->CloseFile(fileHandle));
 
+    relEntry.recordCount -= cnt;
+    TRY(pSmm->UpdateRelEntry(relName, relEntry));
     std::cout << cnt << " tuple(s) deleted." << std::endl;
 
     return 0;
@@ -622,6 +777,8 @@ RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
                       const int bIsValue, const RelAttr &rhsRelAttr, const Value &rhsValue,
                       int nConditions, const Condition *conditions) {
     if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+    RelCatEntry relEntry;
+    TRY(pSmm->GetRelEntry(relName, relEntry));
 
     TRY(checkAttrBelongsToRel(updAttr, relName));
     if (!bIsValue)
@@ -635,11 +792,18 @@ RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
         attrMap[info.attrName] = info;
 
     std::vector<QL_Condition> conds;
-    TRY(checkConditionsValid(relName, nConditions, conditions, attrMap, conds));
+    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
+    for (int i = 0; i < nConditions; ++i)
+        if (!(conds[i].lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL))
+            VLOG(1) << conds[i].lhsAttr.nullableIndex;
 
-    DataAttrInfo &updAttrInfo = attrMap[updAttr.attrName];
-    DataAttrInfo &valueAttrInfo = attrMap[rhsRelAttr.attrName];
-    VLOG(1) << updAttrInfo.attrType << " " << updAttrInfo.offset << " " << updAttrInfo.attrLength;
+    DataAttrInfo updAttrInfo = attrMap[updAttr.attrName];
+    int valAttrOffset = bIsValue ? 0 : attrMap[rhsRelAttr.attrName].offset;
+    bool nullable = !(updAttrInfo.attrSpecs & ATTR_SPEC_NOTNULL);
+    if (!nullable && bIsValue && rhsValue.type == VT_NULL)
+        return QL_ATTR_IS_NOTNULL;
+    if (nullable)
+        VLOG(1) << updAttrInfo.attrName << " nullableIndex: " << updAttrInfo.nullableIndex;
 
     RM_FileHandle fileHandle;
     TRY(pRmm->OpenFile(relName, fileHandle));
@@ -657,16 +821,15 @@ RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
         TRY(record.GetIsnull(isnull));
         bool shouldUpdate = true;
         for (int i = 0; i < nConditions && shouldUpdate; ++i)
-            shouldUpdate = checkSatisfy(data, isnull ? *isnull : false, conds[i]);
+            shouldUpdate = checkSatisfy(data, isnull, conds[i]);
         if (shouldUpdate) {
             ++cnt;
-            if (rhsValue.type == VT_NULL) {
-                assert(isnull);
-                *isnull = true;
+            if (bIsValue && rhsValue.type == VT_NULL) {
+                isnull[updAttrInfo.nullableIndex] = true;
             } else {
                 VLOG(1) << "update";
-                if (isnull) *isnull = false;
-                void *value = bIsValue ? rhsValue.data : data + valueAttrInfo.offset;
+                if (nullable) isnull[updAttrInfo.nullableIndex] = false;
+                void *value = bIsValue ? rhsValue.data : data + valAttrOffset;
                 switch (updAttrInfo.attrType) {
                     case INT:
                         *(int *)(data + updAttrInfo.offset) = *(int *)value;

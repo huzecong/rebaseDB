@@ -54,7 +54,7 @@ private:
     IX_Manager *pIxm;
     RM_Manager *pRmm;
 
-    RC checkConditionsValid(const char *relName, int nConditions, const Condition *conditions,
+    RC CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
                             const std::map<std::string, DataAttrInfo> &attrMap,
                             std::vector<QL_Condition> &retConditions);
 
@@ -65,6 +65,9 @@ private:
                         const std::vector<AttrRecordInfo> &attrInfo,
                         const std::vector<void *> &outerLoopData,
                         char *recordData);
+
+    bool checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition);
+    bool checkSatisfy(char *data, bool *isnull, const QL_Condition &condition);
 };
 
 //
@@ -79,7 +82,8 @@ void QL_PrintError(RC rc);
 #define QL_ATTR_TYPES_MISMATCH      (START_QL_WARN + 4)
 #define QL_AMBIGUOUS_ATTR_NAME      (START_QL_WARN + 5)
 #define QL_FORBIDDEN                (START_QL_WARN + 6)
-#define QL_LASTWARN QL_FORBIDDEN
+#define QL_ATTR_IS_NOTNULL          (START_QL_WARN + 7)
+#define QL_LASTWARN QL_ATTR_IS_NOTNULL
 
 #define QL_SOMEERROR                (START_QL_ERR - 0)
 #define QL_LASTERROR QL_SOMEERROR

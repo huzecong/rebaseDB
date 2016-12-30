@@ -85,7 +85,6 @@ public:
     // a table -- since in this situation you can just send in the
     // RecData.  The second will be useful in the QL layer.
     void Print(std::ostream &c, const char * const data, bool isnull[]);
-    void Print(std::ostream &c, const void * const data[], bool isnull[]);
 
     void PrintFooter(std::ostream &c) const;
 

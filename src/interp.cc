@@ -79,7 +79,7 @@ RC interp(NODE *n) {
     RC errval = 0;         /* returned error value      */
 
     /* if input not coming from a terminal, then echo the query */
-    // if (!isatty(0))
+     if (!isatty(0))
         echo_query(n);
 
     static char cmd[MAXNAME * 2];
@@ -538,7 +538,7 @@ static int mk_relations(NODE *list, int max, char *relations[]) {
  * mk_conditions: converts a list of conditions into an array of conditions
  *
  * Returns:
- *    the lengh of the list on success ( >= 0 )
+ *    the length of the list on success ( >= 0 )
  *    error code otherwise
  */
 static int mk_conditions(NODE *list, int max, Condition conditions[]) {
@@ -568,6 +568,10 @@ static int mk_conditions(NODE *list, int max, Condition conditions[]) {
                 conditions[i].bRhsIsAttr = FALSE;
                 mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
             }
+        } else {
+            VLOG(1) << "null";
+            conditions[i].bRhsIsAttr = FALSE;
+            conditions[i].rhsValue = {VT_NULL, NULL};
         }
     }
 

@@ -4,6 +4,7 @@
 
 #include <set>
 #include <cassert>
+#include <numeric>
 #include "ql.h"
 #include "ql_graph.h"
 
@@ -85,10 +86,12 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     for (int i = 0; i < nConditions; ++i) {
         DEFINE_ATTRINFO(lhsAttr, make_tag(conditions[i].lhsAttr));
         bool nullable = ((lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) == 0);
+        VLOG(1) << lhsAttr.attrType << " " << conditions[i].rhsValue.type << " " << nullable;
         if (conditions[i].bRhsIsAttr) {
             DEFINE_ATTRINFO(rhsAttr, make_tag(conditions[i].rhsAttr));
-            if (lhsAttr.attrType != rhsAttr.attrType)
+            if (lhsAttr.attrType != rhsAttr.attrType) {
                 return QL_ATTR_TYPES_MISMATCH;
+            }
         } else {
             if (!can_assign_to(lhsAttr.attrType, conditions[i].rhsValue.type, nullable))
                 return QL_VALUE_TYPES_MISMATCH;
@@ -131,8 +134,19 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     std::vector<DataAttrInfo> finalHeaders((unsigned long)nSelAttrs);
     ARR_PTR(selAttrRelIndex, int, nSelAttrs);
     int finalRecordSize = 0, nullableIndex = 0;
+    if (nSelAttrs == 0) {
+        nSelAttrs = (int)std::accumulate(attrCount, attrCount + nRelations, 0UL);
+        projections.resize(nSelAttrs);
+        finalHeaders.resize(nSelAttrs);
+        int attrCnt = 0;
+        for (int i = 0; i < nRelations; ++i)
+            for (int j = 0; j < attrCount[i]; ++j)
+                projections[attrCnt++] = attrInfo[i][j];
+    } else {
+        for (int i = 0; i < nSelAttrs; ++i)
+            projections[i] = attrMap[make_tag(selAttrs[i])];
+    }
     for (int i = 0; i < nSelAttrs; ++i) {
-        projections[i] = attrMap[make_tag(selAttrs[i])];
         finalHeaders[i] = projections[i];
         finalHeaders[i].offset = finalRecordSize;
         selAttrRelIndex[i] = relNumMap[projections[i].relName];
@@ -183,9 +197,8 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
             TRY(records[ptr].GetIsnull(isnull[ptr]));
         }
         ++cnt;
-        if (cnt % (sumRecords / 100) == 0) {
-            std::cout << "\r";
-            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords;
+        if (cnt % ((sumRecords + 99) / 100) == 0) {
+            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords << "\r";
             fflush(stdout);
         }
         bool satisfy = true;
@@ -213,12 +226,12 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
                 if ((projections[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0)
                     finalRecordIsnull[finalHeaders[i].nullableIndex] = isnull[selAttrRelIndex[i]][projections[i].nullableIndex];
             }
-            std::cout << "\r";
             printer.Print(std::cout, finalRecordData, finalRecordIsnull);
-            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords;
+            std::cout << "[" << 100 * cnt / sumRecords << "%] " << cnt << "/" << sumRecords << "\r";
             fflush(stdout);
         }
     }
+    std::cout << "[100%] " << sumRecords << "/" << sumRecords << "\r";
     printer.PrintFooter(std::cout);
 
     VLOG(1) << cnt << " records processed";

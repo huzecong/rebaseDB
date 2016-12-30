@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <glog/logging.h>
 
 using namespace std;
 
@@ -20,7 +21,7 @@ using namespace std;
 // This method will output some spaces so that print entry will align everythin
 // nice and neat.
 //
-void Spaces(int maxLength, int printedSoFar) {
+void Spaces(int maxLength, size_t printedSoFar) {
     for (int i = printedSoFar; i < maxLength; i++)
         cout << " ";
 }
@@ -124,7 +125,7 @@ void Printer::PrintHeader( ostream &c ) const {
     for (i = 0; i < attrCount; i++) {
         // Print out the header information name
         c << psHeader[i];
-        iLen = strlen(psHeader[i]);
+        iLen = (int)strlen(psHeader[i]);
         dashes += iLen;
 
         for (j = 0; j < spaces[i]; j++)
@@ -144,72 +145,6 @@ void Printer::PrintHeader( ostream &c ) const {
 void Printer::PrintFooter(ostream &c) const {
     c << "\n";
     c << iCount << " tuple(s).\n";
-}
-
-//
-// Print
-//
-//  data - this is an array of void *.  This print routine is used by
-//  the QL Layer.
-//
-//  Unfortunately, this is essentially the same as the other Print
-//  routine.
-//
-void Printer::Print(ostream &c, const void * const data[], bool isnull[]) {
-    char str[MAXPRINTSTRING], strSpace[50];
-    int i, a;
-    float b;
-
-    // Increment the number of tuples printed
-    iCount++;
-
-    int nullableIndex = 0;
-
-    for (i = 0; i < attrCount; i++) {
-        bool this_isnull = false;
-        if (!(attributes[i].attrSpecs & ATTR_SPEC_NOTNULL)) {
-            this_isnull = isnull[nullableIndex++];
-        }
-        if (attributes[i].attrType == STRING || this_isnull) {
-            // We will only print out the first MAXNAME+10 characters of
-            // the string value.
-            memset(str, 0, MAXPRINTSTRING);
-
-            const char* str_to_print = this_isnull ? "NULL" : (char *)data[i];
-
-            if (attributes[i].attrDisplayLength > MAXPRINTSTRING) {
-                strncpy(str, str_to_print, MAXPRINTSTRING - 1);
-                str[MAXPRINTSTRING - 3] = '.';
-                str[MAXPRINTSTRING - 2] = '.';
-                c << str;
-                Spaces(MAXPRINTSTRING, strlen(str));
-            } else {
-                strncpy(str, str_to_print, attributes[i].attrDisplayLength);
-                c << str;
-                if (attributes[i].attrDisplayLength < (int) strlen(psHeader[i]))
-                    Spaces(strlen(psHeader[i]), strlen(str));
-                else
-                    Spaces(attributes[i].attrDisplayLength, strlen(str));
-            }
-        } else if (attributes[i].attrType == INT) {
-            memcpy (&a, data[i], sizeof(int));
-            sprintf(strSpace, "%d", a);
-            c << a;
-            if (strlen(psHeader[i]) < 12)
-                Spaces(12, strlen(strSpace));
-            else
-                Spaces(strlen(psHeader[i]), strlen(strSpace));
-        } else if (attributes[i].attrType == FLOAT) {
-            memcpy (&b, data[i], sizeof(float));
-            sprintf(strSpace, "%f", b);
-            c << strSpace;
-            if (strlen(psHeader[i]) < 12)
-                Spaces(12, strlen(strSpace));
-            else
-                Spaces(strlen(psHeader[i]), strlen(strSpace));
-        }
-    }
-    c << "\n";
 }
 
 //
@@ -253,10 +188,10 @@ void Printer::Print(ostream &c, const char * const data, bool isnull[]) {
                 c << str;
                 Spaces(MAXPRINTSTRING, strlen(str));
             } else {
-                strncpy(str, str_to_print, this_isnull ? 5 : attributes[i].attrDisplayLength);
+                strncpy(str, str_to_print, (size_t)(this_isnull ? 4 : attributes[i].attrDisplayLength));
                 c << str;
                 if (attributes[i].attrDisplayLength < (int) strlen(psHeader[i]))
-                    Spaces(strlen(psHeader[i]), strlen(str));
+                    Spaces((int)strlen(psHeader[i]), strlen(str));
                 else
                     Spaces(attributes[i].attrDisplayLength, strlen(str));
             }
@@ -267,7 +202,7 @@ void Printer::Print(ostream &c, const char * const data, bool isnull[]) {
             if (strlen(psHeader[i]) < 12)
                 Spaces(12, strlen(strSpace));
             else
-                Spaces(strlen(psHeader[i]), strlen(strSpace));
+                Spaces((int)strlen(psHeader[i]), strlen(strSpace));
         } else if (attributes[i].attrType == FLOAT) {
             memcpy (&b, (data + attributes[i].offset), sizeof(float));
             sprintf(strSpace, "%f", b);
@@ -275,7 +210,7 @@ void Printer::Print(ostream &c, const char * const data, bool isnull[]) {
             if (strlen(psHeader[i]) < 12)
                 Spaces(12, strlen(strSpace));
             else
-                Spaces(strlen(psHeader[i]), strlen(strSpace));
+                Spaces((int)strlen(psHeader[i]), strlen(strSpace));
         }
     }
     c << "\n";

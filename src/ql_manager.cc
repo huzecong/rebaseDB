@@ -555,6 +555,24 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
         }
     }
 
+    RM_FileHandle fh;
+    TRY(pRmm->OpenFile(relName, fh));
+    RM_FileScan scan;
+    bool duplicate = false;
+    for (int i = 0; i < attrCount; ++i)
+        if (attributes[i].attrSpecs & ATTR_SPEC_PRIMARYKEY) {
+            RM_Record rec;
+            TRY(scan.OpenScan(fh, attributes[i].attrType, attributes[i].attrSize, attributes[i].offset,
+                              EQ_OP, values[i].data));
+            int retcode = scan.GetNextRec(rec);
+            if (retcode != RM_EOF) {
+                if (retcode != 0) return retcode;
+                duplicate = true;
+            }
+            break;
+        }
+    if (duplicate) return QL_DUPLICATE_PRIMARY_KEY;
+
     ARR_PTR(data, char, relEntry.tupleLength);
     ARR_PTR(isnull, bool, nullableNum);
     int nullableIndex = 0;
@@ -587,10 +605,8 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
         }
     }
 
-    RM_FileHandle fh;
     RID rid;
 
-    TRY(pRmm->OpenFile(relName, fh));
     TRY(fh.InsertRec(data, rid, isnull));
     TRY(pRmm->CloseFile(fh));
 

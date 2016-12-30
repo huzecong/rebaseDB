@@ -22,6 +22,7 @@ const char *QL_WarnMsg[] = {
     "ambiguous attribute name",
     "operation forbidden",
     "attribute should not be null",
+    "a record with the same primary key already exits",
 };
 
 const char *QL_ErrorMsg[] = {

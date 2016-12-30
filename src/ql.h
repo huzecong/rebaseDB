@@ -83,7 +83,8 @@ void QL_PrintError(RC rc);
 #define QL_AMBIGUOUS_ATTR_NAME      (START_QL_WARN + 5)
 #define QL_FORBIDDEN                (START_QL_WARN + 6)
 #define QL_ATTR_IS_NOTNULL          (START_QL_WARN + 7)
-#define QL_LASTWARN QL_ATTR_IS_NOTNULL
+#define QL_DUPLICATE_PRIMARY_KEY    (START_QL_WARN + 8)
+#define QL_LASTWARN QL_DUPLICATE_PRIMARY_KEY
 
 #define QL_SOMEERROR                (START_QL_ERR - 0)
 #define QL_LASTERROR QL_SOMEERROR

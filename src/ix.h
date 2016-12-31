@@ -14,6 +14,7 @@
 #include "pf.h"
 #include "rm.h"
 
+#include <memory>
 #include <glog/logging.h>
 
 class IX_IndexHandle;
@@ -72,8 +73,9 @@ class IX_IndexHandle {
     RC new_node(int *nodeNum);
     RC delete_node(int nodeNum);
 
+    RC insert_internal_entry(void *header, int index, void* key, int node);
     RC insert_entry(void *header, void* pData, const RID &rid);
-    RC insert_internal(int nodeNum, int *splitNode, void *pData, const RID &rid);
+    RC insert_internal(int nodeNum, int *splitNode, std::unique_ptr<char[]> *splitKey, void *pData, const RID &rid);
     RC insert_leaf(int nodeNum, int *splitNode, void *pData, const RID &rid);
 
 public:

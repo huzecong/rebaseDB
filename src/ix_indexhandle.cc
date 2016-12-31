@@ -6,6 +6,7 @@
 #include "ix_internal.h"
 
 #include <stddef.h>
+#include <memory>
 
 IX_IndexHandle::IX_IndexHandle() { }
 
@@ -77,7 +78,25 @@ RC IX_IndexHandle::insert_entry(void *_header, void* pData, const RID &rid) {
     return 0;
 }
 
-RC IX_IndexHandle::insert_internal(int nodeNum, int *splitNode, void *pData, const RID &rid) {
+RC IX_IndexHandle::insert_internal_entry(void *_header, int index, void* key, int node) {
+    IX_PageHeader *header = (IX_PageHeader*)_header;
+    short &n = header->childrenNum;
+    char* entries = header->entries;
+
+    if (index != n - 1) {
+        char* src = ((Entry*)__get_entry(entries, index))->key;
+        memmove(src + entrySize, src,
+                (char*)(&((Entry*)__get_entry(entries, n - 1))->key) - src);
+    }
+    memcpy(((Entry*)__get_entry(entries, index))->key,
+            key, attrLength);
+    ((Entry*)__get_entry(entries, index + 1))->pageNum = node;
+    ++n;
+
+    return 0;
+}
+
+RC IX_IndexHandle::insert_internal(int nodeNum, int *splitNode, std::unique_ptr<char[]> *splitKey, void *pData, const RID &rid) {
     PF_PageHandle ph;
     IX_PageHeader *header;
     TRY(pfHandle.GetThisPage(nodeNum, ph));
@@ -88,6 +107,7 @@ RC IX_IndexHandle::insert_internal(int nodeNum, int *splitNode, void *pData, con
     //       entry[n] contains child_ptr[n]
     int ret = 0;
     *splitNode = kNullNode;
+    splitKey->reset();
 
     int index = n - 1;
     for (int i = 0; i < n- 1; ++i) {
@@ -106,37 +126,59 @@ RC IX_IndexHandle::insert_internal(int nodeNum, int *splitNode, void *pData, con
     short c_type = c_header->type;
     TRY(pfHandle.UnpinPage(child));
     int lowerSplitNode;
+    std::unique_ptr<char[]> lowerSplitKey;
     if (c_type == kInternalNode) {
-        TRY(insert_internal(child, &lowerSplitNode, pData, rid));
+        ret = insert_internal(child, &lowerSplitNode, &lowerSplitKey, pData, rid);
     } else {
-        TRY(insert_leaf(child, &lowerSplitNode, pData, rid));
+        ret = insert_leaf(child, &lowerSplitNode, pData, rid);
     }
     if (lowerSplitNode != kNullNode) {
-        LOG(INFO) << "insert_internal: lower split";
-        PF_PageHandle s_ph;
-        IX_PageHeader *s_header;
-        TRY(pfHandle.GetThisPage(lowerSplitNode, s_ph));
-        TRY(s_ph.GetData(CVOID(s_header)));
-        char* s_key = ((Entry*)__get_entry(s_header->entries, 0))->key;
-        if (n != this->b) {
-            int index = n - 1;
-            for (int i = 0; i < n - 1; ++i) {
-                if (__cmp(((Entry*)__get_entry(entries, i))->key, s_key) > 0) {
-                    index = i;
-                    break;
-                }
-            }
-            if (index != n - 1) {
-                char* src = ((Entry*)__get_entry(entries, index + 1))->key;
-                memmove(src + entrySize, src,
-                        (char*)__get_entry(entries, n) - src);
-            }
-            memcpy(((Entry*)__get_entry(entries, index))->key,
-                    s_key, attrLength);
-            ((Entry*)__get_entry(entries, index + 1))->pageNum = lowerSplitNode;
-            ++n;
+        // LOG(INFO) << "insert_internal: lower split";
+        PF_PageHandle l_ph;
+        IX_PageHeader *l_header;
+        TRY(pfHandle.GetThisPage(lowerSplitNode, l_ph));
+        TRY(l_ph.GetData(CVOID(l_header)));
+        char* l_key;
+        if (lowerSplitKey) {
+            l_key = lowerSplitKey.get();
         } else {
-            LOG(FATAL) << "unhandled";
+            l_key = ((Entry*)__get_entry(l_header->entries, 0))->key;
+        }
+        if (n != this->b) {
+            TRY(insert_internal_entry(header, index, l_key, lowerSplitNode));
+        } else {
+            // LOG(INFO) << "insert_internal: split";
+            int m = n / 2 - 1; // entries [m, n) goes to the new node
+            if (m + 1 < n - m - 1 && m + 1 <= index) {
+                ++m;
+            }
+
+            splitKey->reset(new char[attrLength]);
+            memcpy(splitKey->get(), ((Entry*)__get_entry(entries, m))->key,
+                    attrLength);
+
+            TRY(new_node(splitNode));
+            PF_PageHandle s_ph;
+            IX_PageHeader *s_header;
+            TRY(pfHandle.GetThisPage(*splitNode, s_ph));
+            TRY(s_ph.GetData(CVOID(s_header)));
+            s_header->childrenNum = n - m - 1;
+            s_header->type = kInternalNode;
+
+            char* src = (char*)(&((Entry*)__get_entry(entries, m + 1))->pageNum);
+            char* src_end = ((Entry*)__get_entry(entries, n - 1))->key;
+            memcpy(s_header->entries, src, src_end - src);
+
+            n = m + 1;
+            if (index <= m) {
+                TRY(insert_internal_entry(header, index, l_key, lowerSplitNode));
+            } else {
+                TRY(insert_internal_entry(s_header, index - (m + 1),
+                            l_key, lowerSplitNode));
+            }
+
+            TRY(pfHandle.MarkDirty(*splitNode));
+            TRY(pfHandle.UnpinPage(*splitNode));
         }
         TRY(pfHandle.UnpinPage(lowerSplitNode));
     }
@@ -205,8 +247,9 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
     short type = root_header->type;
     TRY(pfHandle.UnpinPage(root));
     int splitNode;
+    std::unique_ptr<char[]> splitKey;
     if (type == kInternalNode) {
-        TRY(insert_internal(root, &splitNode, pData, rid));
+        TRY(insert_internal(root, &splitNode, &splitKey, pData, rid));
     } else {
         TRY(insert_leaf(root, &splitNode, pData, rid));
     }
@@ -232,8 +275,13 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
         Entry* p_entry_0 = (Entry*)__get_entry(p_header->entries, 0);
         Entry* p_entry_1 = (Entry*)__get_entry(p_header->entries, 1);
         p_entry_0->pageNum = root;
-        memcpy(p_entry_0->key,
-                ((Entry*)__get_entry(s_header->entries, 0))->key, attrLength);
+        if (splitKey) {
+            memcpy(p_entry_0->key,
+                    splitKey.get(), attrLength);
+        } else {
+            memcpy(p_entry_0->key,
+                    ((Entry*)__get_entry(s_header->entries, 0))->key, attrLength);
+        }
         p_entry_1->pageNum = splitNode;
 
         TRY(pfHandle.UnpinPage(splitNode));

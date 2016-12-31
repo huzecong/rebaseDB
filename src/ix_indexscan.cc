@@ -85,8 +85,8 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp, void
         } else {
             int index = 0;
             if (compOp == GT_OP || compOp == GE_OP) {
-                index = header->childrenNum;
-                for (int i = 0; i < header->childrenNum; ++i) {
+                index = header->childrenNum - 1;
+                for (int i = 0; i < header->childrenNum - 1; ++i) {
                     if (indexHandle.__cmp(((Entry*)indexHandle.__get_entry(
                                         header->entries, i))->key, value) > 0) {
                         index = i;

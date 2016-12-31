@@ -17,12 +17,14 @@ const char* kFileName = "ixt";
 RC Test1(void);
 RC Test2(void);
 RC Test3(void);
+RC Test4(void);
 
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
     Test3,
+    Test4,
 };
 #define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
@@ -203,13 +205,12 @@ RC Test3() {
     TRY(ixm.OpenIndex(kFileName, 1, ih));
 
     auto rid_gen = [](int n) {
-        return RID(n, n);
+        return RID(n + 1, n * 8);
     };
 
-    const int n = 9;
+    const int n = 1;
 
     for (int i = 0; i < n; ++i) {
-        LOG(INFO) << "insertentry i = " << i;
         TRY(ih.InsertEntry(&i, rid_gen(i)));
     }
 
@@ -218,7 +219,39 @@ RC Test3() {
     RID rid;
 
     for (int i = 0; i < n; ++i) {
-        LOG(INFO) << "checkentry i = " << i;
+        TRY(sc.GetNextEntry(rid));
+        TRY(check_rid_eq(rid, rid_gen(i)));
+    }
+    CHECK(sc.GetNextEntry(rid) == IX_EOF);
+    TRY(sc.CloseScan());
+
+    TRY(ixm.CloseIndex(ih));
+    TRY(ixm.DestroyIndex(kFileName, 1));
+    return 0;
+}
+
+RC Test4() {
+    LOG(INFO) << "test4";
+    IX_IndexHandle ih;
+    TRY(ixm.CreateIndex(kFileName, 1, INT, 4));
+    TRY(ixm.OpenIndex(kFileName, 1, ih));
+
+    auto rid_gen = [](int n) {
+        return RID(n, n);
+    };
+
+    const int n = 1000;
+
+    for (int i = n - 1; i >= 0; --i) {
+        TRY(ih.InsertEntry(&i, rid_gen(i)));
+    }
+
+    int gtcmpi = 500;
+    IX_IndexScan sc;
+    TRY(sc.OpenScan(ih, GT_OP, &gtcmpi));
+    RID rid;
+
+    for (int i = gtcmpi + 1; i < n; ++i) {
         TRY(sc.GetNextEntry(rid));
         TRY(check_rid_eq(rid, rid_gen(i)));
     }

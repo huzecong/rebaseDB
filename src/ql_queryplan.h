@@ -5,6 +5,12 @@
 #ifndef REBASE_QL_QUERYPLAN_H
 #define REBASE_QL_QUERYPLAN_H
 
+#include "ql.h"
+
+#include <map>
+#include <string>
+#include <memory>
+
 typedef std::pair<std::string, std::string> AttrTag;
 
 template <typename T>

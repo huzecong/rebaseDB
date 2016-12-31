@@ -6,6 +6,7 @@
 #include <cstddef>
 #include "pf.h"
 #include "rm.h"
+#include "rm_internal.h"
 
 /* RM FileHandle */
 RM_FileHandle::RM_FileHandle() {

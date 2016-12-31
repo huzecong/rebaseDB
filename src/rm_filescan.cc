@@ -3,6 +3,7 @@
 //
 
 #include "rm.h"
+#include "rm_internal.h"
 
 #include <cassert>
 

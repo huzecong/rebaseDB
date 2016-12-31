@@ -21,7 +21,6 @@
 #include "redbase.h"
 #include "rm_rid.h"
 #include "pf.h"
-#include "rm_internal.h"
 
 #include <glog/logging.h>
 #include <cstring>

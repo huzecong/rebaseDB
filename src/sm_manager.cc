@@ -7,6 +7,11 @@
 
 #include "sm.h"
 
+#include <algorithm>
+#include <memory>
+#include <cassert>
+#include <stddef.h>
+
 static const int kCwdLen = 256;
 
 SM_Manager::SM_Manager(IX_Manager &ixm_, RM_Manager &rmm_) {

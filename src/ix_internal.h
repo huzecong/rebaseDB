@@ -8,6 +8,7 @@ static const int kNullNode = -1;
 struct IX_FileHeader {
     AttrType attrType;
     int attrLength;
+    int root;
     int firstFreePage;
 };
 
@@ -17,8 +18,9 @@ enum IX_NodeType {
 };
 
 struct IX_PageHeader {
-    IX_NodeType type;
+    short type;
     short childrenNum;
+    char entries[4];
 };
 
 struct Entry {
@@ -30,9 +32,4 @@ struct Entry {
     int slotNum;
     char key[4];
 };
-
-template <int N, class T>
-inline T upper_align(T x) {
-    return (x + (N - 1)) & ~((unsigned)(N - 1));
-}
 

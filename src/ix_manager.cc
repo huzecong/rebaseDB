@@ -23,7 +23,7 @@ IX_Manager::~IX_Manager() { }
 
 RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType, int attrLength) {
     int attrSize = upper_align<4>(attrLength);
-    if (sizeof(IX_PageHeader) + attrSize + 2 * offsetof(Entry, key) > PF_PAGE_SIZE) {
+    if (offsetof(IX_PageHeader, entries) + attrSize + 2 * offsetof(Entry, key) > PF_PAGE_SIZE) {
         return IX_ATTR_TOO_LARGE;
     }
     std::string indexFileName = filename_gen(fileName, indexNo);
@@ -38,6 +38,7 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
     TRY(pageHandle.GetData(CVOID(fileHeader)));
     fileHeader->attrType = attrType;
     fileHeader->attrLength = attrLength;
+    fileHeader->root = 1;
     fileHeader->firstFreePage = kLastFreePage;
     TRY(fileHandle.MarkDirty(0));
     TRY(fileHandle.UnpinPage(0));
@@ -48,7 +49,7 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
     TRY(pageHandle.GetData(CVOID(root)));
     root->type = kLeafNode;
     root->childrenNum = 0;
-    Entry* root_first_entry = (Entry*)(((char*)root) + sizeof(IX_PageHeader));
+    Entry* root_first_entry = (Entry*)(root->entries);
     root_first_entry->pageNum = kNullNode;
     TRY(fileHandle.MarkDirty(1));
     TRY(fileHandle.UnpinPage(1));
@@ -79,6 +80,7 @@ RC IX_Manager::OpenIndex(const char *fileName, int indexNo, IX_IndexHandle &inde
     TRY(pageHandle.GetData(CVOID(fileHeader)));
     indexHandle.attrType = fileHeader->attrType;
     indexHandle.attrLength = fileHeader->attrLength;
+    indexHandle.root = fileHeader->root;
     indexHandle.firstFreePage = fileHeader->firstFreePage;
     indexHandle.isHeaderDirty = false;
     TRY(fileHandle.UnpinPage(0));
@@ -101,6 +103,7 @@ RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle) {
 
         TRY(fileHandle.GetFirstPage(pageHandle));
         TRY(pageHandle.GetData(CVOID(fileHeader)));
+        fileHeader->root = indexHandle.root;
         fileHeader->firstFreePage = indexHandle.firstFreePage;
 
         TRY(fileHandle.MarkDirty(0));

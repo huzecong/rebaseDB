@@ -58,20 +58,22 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp, void
         case NOTNULL_OP:
             LOG(FATAL) << "null is not supported in IX";
     }
-    currentNodeNum = 1;
+    currentNodeNum = indexHandle.root;
     currentEntryIndex = 0;
     const PF_FileHandle &file = indexHandle.pfHandle;
-    while (1) {
+    bool should_stop = false;
+    while (!should_stop) {
         PF_PageHandle page;
         IX_PageHeader *header;
         TRY(file.GetThisPage(currentNodeNum, page));
+        int openedPageNum = currentNodeNum;
         TRY(page.GetData(CVOID(header)));
         if (header->type == kLeafNode) {
             if (compOp == GT_OP || compOp == GE_OP) {
-                char* entries = ((char*)header + sizeof(IX_PageHeader));
                 for (currentEntryIndex = 0; currentEntryIndex < header->childrenNum;
                         ++currentEntryIndex) {
-                    Entry *entry = (Entry*)indexHandle.__get_entry(entries, currentEntryIndex);
+                    Entry *entry = (Entry*)indexHandle.__get_entry(
+                            header->entries, currentEntryIndex);
                     int c = indexHandle.__cmp(entry->key, value);
                     if ((compOp == GT_OP && c > 0) ||
                             (compOp == GE_OP && c >= 0)) {
@@ -79,11 +81,23 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp, void
                     }
                 }
             }
-            TRY(file.UnpinPage(currentNodeNum));
-            break;
+            should_stop = true;
         } else {
-            LOG(FATAL) << "not handled";
+            int index = 0;
+            if (compOp == GT_OP || compOp == GE_OP) {
+                index = header->childrenNum;
+                for (int i = 0; i < header->childrenNum; ++i) {
+                    if (indexHandle.__cmp(((Entry*)indexHandle.__get_entry(
+                                        header->entries, i))->key, value) > 0) {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+            currentNodeNum = ((Entry*)indexHandle.__get_entry(
+                        header->entries, index))->pageNum;
         }
+        TRY(file.UnpinPage(openedPageNum));
     }
     scanOpened = true;
     return 0;
@@ -102,8 +116,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         int openedPageNum = currentNodeNum;
         TRY(file.GetThisPage(currentNodeNum, page));
         TRY(page.GetData(CVOID(header)));
-        char* entries = ((char*)header) + sizeof(IX_PageHeader);
-        Entry* entry = (Entry*)indexHandle->__get_entry(entries, currentEntryIndex);
+        Entry* entry = (Entry*)indexHandle->__get_entry(header->entries, currentEntryIndex);
         if (currentEntryIndex == header->childrenNum) {
             if (entry->pageNum == kNullNode) {
                 ret = IX_EOF;

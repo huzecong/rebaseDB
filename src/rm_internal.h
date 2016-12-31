@@ -23,11 +23,6 @@ struct RM_FileHeader {
     short nullableOffsets[1];
 };
 
-template <int N, class T>
-inline T upper_align(T x) {
-    return (x + (N - 1)) & ~((unsigned)(N - 1));
-}
-
 inline bool getBitMap(unsigned char *bitMap, int pos) {
     return (bool)(bitMap[pos >> 3] >> (pos & 0x7) & 1);
 }

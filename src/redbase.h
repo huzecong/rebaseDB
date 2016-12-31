@@ -119,7 +119,13 @@ typedef char Boolean;
 #define ARR_PTR(_name, _type, _size) \
     auto __##_name##__ = std::make_unique<_type[]>((size_t)_size); \
     _type * _name = __##_name##__.get()
-//#define ARR_PTR(_name, _type, _size) \
-//    _type * _name = new _type[(size_t)_size]
+//#define ARR_PTR(_name, _type, _size) _type * _name = new _type[(size_t)_size]
+
+#ifdef __cplusplus
+template <int N, class T>
+inline T upper_align(T x) {
+    return (x + (N - 1)) & ~((unsigned)(N - 1));
+}
+#endif
 
 #endif

@@ -16,11 +16,13 @@ const char* kFileName = "ixt";
 //
 RC Test1(void);
 RC Test2(void);
+RC Test3(void);
 
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
+    Test3,
 };
 #define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
@@ -186,6 +188,40 @@ RC Test2() {
     TRY(check_rid_eq(rid, rid1));
     TRY(sc.GetNextEntry(rid));
     TRY(check_rid_eq(rid, rid0));
+    CHECK(sc.GetNextEntry(rid) == IX_EOF);
+    TRY(sc.CloseScan());
+
+    TRY(ixm.CloseIndex(ih));
+    TRY(ixm.DestroyIndex(kFileName, 1));
+    return 0;
+}
+
+RC Test3() {
+    LOG(INFO) << "test3";
+    IX_IndexHandle ih;
+    TRY(ixm.CreateIndex(kFileName, 1, INT, 4));
+    TRY(ixm.OpenIndex(kFileName, 1, ih));
+
+    auto rid_gen = [](int n) {
+        return RID(n, n);
+    };
+
+    const int n = 9;
+
+    for (int i = 0; i < n; ++i) {
+        LOG(INFO) << "insertentry i = " << i;
+        TRY(ih.InsertEntry(&i, rid_gen(i)));
+    }
+
+    IX_IndexScan sc;
+    TRY(sc.OpenScan(ih, NO_OP, NULL));
+    RID rid;
+
+    for (int i = 0; i < n; ++i) {
+        LOG(INFO) << "checkentry i = " << i;
+        TRY(sc.GetNextEntry(rid));
+        TRY(check_rid_eq(rid, rid_gen(i)));
+    }
     CHECK(sc.GetNextEntry(rid) == IX_EOF);
     TRY(sc.CloseScan());
 

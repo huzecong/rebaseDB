@@ -37,7 +37,9 @@ set(SOURCE_FILES
 add_executable(dbcreate ${SOURCE_FILES} "src/dbcreate.cpp")
 add_executable(redbase ${SOURCE_FILES} "src/redbase.cpp")
 add_executable(rm_test ${SOURCE_FILES} "src/rm_test.cpp")
+add_executable(ix_test ${SOURCE_FILES} "src/ix_test.cpp")
 
 target_link_libraries(dbcreate ${GLOG_LIBRARIES})
 target_link_libraries(redbase ${GLOG_LIBRARIES})
 target_link_libraries(rm_test ${GLOG_LIBRARIES})
+target_link_libraries(ix_test ${GLOG_LIBRARIES})

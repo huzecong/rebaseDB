@@ -57,15 +57,15 @@ private:
     RC CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
                             const std::map<std::string, DataAttrInfo> &attrMap,
                             std::vector<QL_Condition> &retConditions);
-
-    bool checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition);
-    bool checkSatisfy(char *data, bool *isnull, const QL_Condition &condition);
 };
 
 //
 // Print-error function
 //
 void QL_PrintError(RC rc);
+
+bool checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition);
+bool checkSatisfy(char *data, bool *isnull, const QL_Condition &condition);
 
 #define QL_ATTR_COUNT_MISMATCH      (START_QL_WARN + 0)
 #define QL_VALUE_TYPES_MISMATCH     (START_QL_WARN + 1)

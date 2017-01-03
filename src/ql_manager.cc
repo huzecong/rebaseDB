@@ -13,6 +13,8 @@ QL_Manager::QL_Manager(SM_Manager &smm, IX_Manager &ixm, RM_Manager &rmm) {
     pSmm = &smm;
     pIxm = &ixm;
     pRmm = &rmm;
+    QL_Iterator::setRM(pRmm);
+    QL_Iterator::setIX(pIxm);
 }
 
 QL_Manager::~QL_Manager() {
@@ -59,7 +61,7 @@ AttrList joinRelations(const AttrList &relA, const AttrList &relB) {
         offset += upper_align<4>(info.attrSize);
     }
     for (auto info : relB) {
-        info.attrSize += offset;
+        info.offset += offset;
         ret.push_back(info);
     }
     return ret;
@@ -68,9 +70,15 @@ AttrList joinRelations(const AttrList &relA, const AttrList &relB) {
 AttrList projectRelation(const AttrList &projection) {
     AttrList ret;
     int offset = 0;
+    short nullableIndex = 0;
     for (auto proj : projection) {
         proj.offset = offset;
         offset += upper_align<4>(proj.attrSize);
+        if (!(proj.attrSpecs & ATTR_SPEC_NOTNULL)) {
+            proj.nullableIndex = nullableIndex++;
+        } else {
+            proj.nullableIndex = -1;
+        }
         ret.push_back(proj);
     }
     return ret;
@@ -224,6 +232,8 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     std::vector<QL_Iterator *> iterators((unsigned long)nRelations);
     QL_DisjointSet disjointSet(nRelations);
     std::vector<AttrMap<DataAttrInfo>> attrMaps((unsigned long)nRelations);
+    for (int i = 0; i < nRelations; ++i)
+        attrMaps[i] = create_map(attrInfo[i]);
     auto findRelNum = [&](const DataAttrInfo &info) {
         return disjointSet.find(relNumMap[info.relName]);
     };
@@ -237,13 +247,20 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
         attrInfo[relNum] = list;
         attrMaps[relNum] = create_map(list);
     };
+    auto findCorrespondingAttrs = [&](int relNum, const AttrList &list) {
+        AttrList ret;
+        for (auto info : list)
+            ret.push_back(attrMaps[relNum][make_tag(info)]);
+        return ret;
+    };
     auto performSimpleOperations = [&](QL_Iterator *iter, int relNum) {
         queryPlans.push_back(iter);
         if (simpleConditions[relNum].size() > 0)
             queryPlans.push_back(iter = new QL_SelectionIterator(iter, simpleConditions[relNum]));
         if (simpleProjections[relNum].size() > 0) {
             AttrList projectTo = projectRelation(simpleProjections[relNum]);
-            queryPlans.push_back(iter = new QL_ProjectionIterator(iter, attrInfo[relNum], projectTo));
+            AttrList projectFrom = findCorrespondingAttrs(relNum, projectTo);
+            queryPlans.push_back(iter = new QL_ProjectionIterator(iter, projectFrom, projectTo));
             updateAttrInfo(relNum, projectTo);
         }
         iterators[relNum] = iter;
@@ -324,7 +341,10 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
             rhsNum = findRelNum(condition.rhsAttr);
         }
 
-        QL_Iterator *iter = new QL_IndexedJoinIterator(iterators[rhsNum], attrInfo[rhsNum], lhsSearch,
+        int searchAttrOffset = attrMaps[rhsNum][make_tag(condition.rhsAttr)].offset;
+        VLOG(1) << "search offset " << searchAttrOffset;
+        QL_Iterator *iter = new QL_IndexedJoinIterator(iterators[rhsNum], attrInfo[rhsNum],
+                                                       lhsSearch, searchAttrOffset,
                                                        iterators[lhsNum], attrInfo[lhsNum]);
         queryPlans.push_back(iter);
         int joinedNum = disjointSet.join(lhsNum, rhsNum);
@@ -343,7 +363,9 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     }
 
     // deal with rest of complex conditions
-    for (auto cond : complexConditions) {
+    while (complexConditions.size() > 0) {
+        auto cond = *complexConditions.begin();
+        complexConditions.erase(complexConditions.begin());
         int lhsNum = findRelNum(cond.lhsAttr);
         int rhsNum = findRelNum(cond.rhsAttr);
         assert(lhsNum != rhsNum);
@@ -351,7 +373,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
                                                           iterators[rhsNum], attrInfo[rhsNum]);
         queryPlans.push_back(iter);
         int joinedNum = disjointSet.join(lhsNum, rhsNum);
-        AttrList joinedRelation = joinRelations(attrInfo[rhsNum], attrInfo[lhsNum]);
+        AttrList joinedRelation = joinRelations(attrInfo[lhsNum], attrInfo[rhsNum]);
         updateAttrInfo(joinedNum, joinedRelation);
         std::vector<QL_Condition> batchConditions = findBatchConditions();
         batchConditions.push_back(cond);
@@ -368,7 +390,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
                                                               iterators[rhsNum], attrInfo[rhsNum]);
             queryPlans.push_back(iter);
             int joinedNum = disjointSet.join(lhsNum, rhsNum);
-            AttrList joinedRelation = joinRelations(attrInfo[rhsNum], attrInfo[lhsNum]);
+            AttrList joinedRelation = joinRelations(attrInfo[lhsNum], attrInfo[rhsNum]);
             updateAttrInfo(joinedNum, joinedRelation);
             iterators[joinedNum] = iter;
         }
@@ -378,10 +400,28 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     QL_Iterator *final = iterators[finalNum];
     updateAttrList(finalProjections);
     finalProjections = projectRelation(finalProjections);
-    if (finalProjections != attrInfo[finalNum])
-        queryPlans.push_back(final = new QL_ProjectionIterator(final, attrInfo[finalNum], finalProjections));
+    if (finalProjections != attrInfo[finalNum]) {
+        AttrList projectFrom = findCorrespondingAttrs(finalNum, finalProjections);
+        queryPlans.push_back(final = new QL_ProjectionIterator(final, projectFrom, finalProjections));
+    }
 
-    final->Print();
+    if (bQueryPlans) {
+        final->Print();
+    }
+
+    Printer printer(finalProjections);
+    printer.PrintHeader(std::cout);
+    int retcode;
+    RM_Record record;
+    char *data;
+    bool *isnull;
+    while ((retcode = final->GetNextRec(record)) != RM_EOF) {
+        if (retcode) return retcode;
+        TRY(record.GetData(data));
+        TRY(record.GetIsnull(isnull));
+        printer.Print(std::cout, data, isnull);
+    }
+    printer.PrintFooter(std::cout);
 
     return 0;
 }
@@ -467,16 +507,19 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     }
 
     RM_FileHandle fh;
+    IX_IndexHandle indexHandle;
     TRY(pRmm->OpenFile(relName, fh));
-    RM_FileScan scan;
+    IX_IndexScan scan;
     bool duplicate = false;
     for (int i = 0; i < attrCount; ++i)
         if (attributes[i].attrSpecs & ATTR_SPEC_PRIMARYKEY) {
-            RM_Record rec;
-            TRY(scan.OpenScan(fh, attributes[i].attrType, attributes[i].attrSize, attributes[i].offset,
-                              EQ_OP, values[i].data));
-            int retcode = scan.GetNextRec(rec);
-            if (retcode != RM_EOF) {
+            TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
+            RID rid;
+            TRY(scan.OpenScan(indexHandle, EQ_OP, values[i].data));
+            int retcode = scan.GetNextEntry(rid);
+            TRY(scan.CloseScan());
+            TRY(pIxm->CloseIndex(indexHandle));
+            if (retcode != IX_EOF) {
                 if (retcode != 0) return retcode;
                 duplicate = true;
             }
@@ -519,6 +562,13 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     RID rid;
 
     TRY(fh.InsertRec(data, rid, isnull));
+    for (int i = 0; i < attrCount; ++i) {
+        if (attributes[i].indexNo != -1) {
+            TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
+            TRY(indexHandle.InsertEntry(data + attributes[i].offset, rid));
+            TRY(pIxm->CloseIndex(indexHandle));
+        }
+    }
     TRY(pRmm->CloseFile(fh));
 
     ++relEntry.recordCount;
@@ -527,7 +577,194 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     return 0;
 }
 
-bool QL_Manager::checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition) {
+RC checkAttrBelongsToRel(const RelAttr &relAttr, const char *relName) {
+    if (relAttr.relName == NULL || !strcmp(relName, relAttr.relName)) return 0;
+    return QL_ATTR_NOTEXIST;
+}
+
+RC QL_Manager::CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
+                                    const std::map<std::string, DataAttrInfo> &attrMap,
+                                    std::vector<QL_Condition> &retConditions) {
+    // check conditions are valid
+    for (int i = 0; i < nConditions; ++i) {
+        TRY(checkAttrBelongsToRel(conditions[i].lhsAttr, relName));
+        if (conditions[i].bRhsIsAttr)
+            TRY(checkAttrBelongsToRel(conditions[i].rhsAttr, relName));
+        auto iter = attrMap.find(conditions[i].lhsAttr.attrName);
+        if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
+        const DataAttrInfo &lhsAttr = iter->second;
+
+        QL_Condition cond;
+        cond.lhsAttr = lhsAttr;
+        cond.op = conditions[i].op;
+        cond.bRhsIsAttr = (bool)conditions[i].bRhsIsAttr;
+
+        bool nullable = ((lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) == 0);
+        if (conditions[i].bRhsIsAttr) {
+            iter = attrMap.find(conditions[i].rhsAttr.attrName);
+            if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
+            const DataAttrInfo &rhsAttr = iter->second;
+            if (lhsAttr.attrType != rhsAttr.attrType)
+                return QL_ATTR_TYPES_MISMATCH;
+            cond.rhsAttr = rhsAttr;
+        } else {
+            if (!can_assign_to(lhsAttr.attrType, conditions[i].rhsValue.type, nullable))
+                return QL_VALUE_TYPES_MISMATCH;
+            cond.rhsValue = conditions[i].rhsValue;
+        }
+
+        retConditions.push_back(cond);
+    }
+    VLOG(1) << "all conditions are valid";
+
+    return 0;
+}
+
+RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *conditions) {
+    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+    RelCatEntry relEntry;
+    TRY(pSmm->GetRelEntry(relName, relEntry));
+
+    int attrCount;
+    std::vector<DataAttrInfo> attributes;
+    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::map<std::string, DataAttrInfo> attrMap;
+    for (auto info : attributes)
+        attrMap[info.attrName] = info;
+
+    std::vector<QL_Condition> conds;
+    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
+
+    std::vector<IX_IndexHandle> indexHandles((unsigned long)attrCount);
+    for (int i = 0; i < attrCount; ++i)
+        if (attributes[i].indexNo != -1)
+            TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandles[i]));
+
+    RM_FileHandle fileHandle;
+    TRY(pRmm->OpenFile(relName, fileHandle));
+    RM_FileScan scan;
+    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
+    RM_Record record;
+    RC retcode;
+    int cnt = 0;
+    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
+        if (retcode) return retcode;
+        char *data;
+        bool *isnull;
+        TRY(record.GetData(data));
+        TRY(record.GetIsnull(isnull));
+        bool shouldDelete = true;
+        for (int i = 0; i < nConditions && shouldDelete; ++i)
+            shouldDelete = checkSatisfy(data, isnull, conds[i]);
+        if (shouldDelete) {
+            ++cnt;
+            RID rid;
+            TRY(record.GetRid(rid));
+            TRY(fileHandle.DeleteRec(rid));
+            for (int i = 0; i < attrCount; ++i)
+                if (attributes[i].indexNo != -1)
+                    TRY(indexHandles[i].DeleteEntry(data + attributes[i].offset, rid));
+        }
+    }
+    TRY(scan.CloseScan());
+    for (int i = 0; i < attrCount; ++i)
+        if (attributes[i].indexNo != -1)
+            TRY(pIxm->CloseIndex(indexHandles[i]));
+    TRY(pRmm->CloseFile(fileHandle));
+
+    relEntry.recordCount -= cnt;
+    TRY(pSmm->UpdateRelEntry(relName, relEntry));
+    std::cout << cnt << " tuple(s) deleted." << std::endl;
+
+    return 0;
+}
+
+RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
+                      const int bIsValue, const RelAttr &rhsRelAttr, const Value &rhsValue,
+                      int nConditions, const Condition *conditions) {
+    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
+    RelCatEntry relEntry;
+    TRY(pSmm->GetRelEntry(relName, relEntry));
+
+    TRY(checkAttrBelongsToRel(updAttr, relName));
+    if (!bIsValue)
+        TRY(checkAttrBelongsToRel(rhsRelAttr, relName));
+
+    int attrCount;
+    std::vector<DataAttrInfo> attributes;
+    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
+    std::map<std::string, DataAttrInfo> attrMap;
+    for (auto info : attributes)
+        attrMap[info.attrName] = info;
+
+    std::vector<QL_Condition> conds;
+    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
+
+    DataAttrInfo updAttrInfo = attrMap[updAttr.attrName];
+    int valAttrOffset = bIsValue ? 0 : attrMap[rhsRelAttr.attrName].offset;
+    bool nullable = !(updAttrInfo.attrSpecs & ATTR_SPEC_NOTNULL);
+    if (!nullable && bIsValue && rhsValue.type == VT_NULL)
+        return QL_ATTR_IS_NOTNULL;
+
+    IX_IndexHandle indexHandle;
+    if (updAttrInfo.indexNo != -1)
+        TRY(pIxm->OpenIndex(relName, updAttrInfo.indexNo, indexHandle));
+
+    RM_FileHandle fileHandle;
+    TRY(pRmm->OpenFile(relName, fileHandle));
+    RM_FileScan scan;
+    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
+    RM_Record record;
+    RC retcode;
+    int cnt = 0;
+    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
+        if (retcode) return retcode;
+        char *data;
+        bool *isnull;
+        TRY(record.GetData(data));
+        TRY(record.GetIsnull(isnull));
+        bool shouldUpdate = true;
+        for (int i = 0; i < nConditions && shouldUpdate; ++i)
+            shouldUpdate = checkSatisfy(data, isnull, conds[i]);
+        if (shouldUpdate) {
+            ++cnt;
+            if (bIsValue && rhsValue.type == VT_NULL) {
+                isnull[updAttrInfo.nullableIndex] = true;
+            } else {
+                if (nullable) isnull[updAttrInfo.nullableIndex] = false;
+                void *value = bIsValue ? rhsValue.data : data + valAttrOffset;
+                if (updAttrInfo.indexNo != -1) {
+                    RID rid;
+                    TRY(record.GetRid(rid));
+                    TRY(indexHandle.DeleteEntry(data + updAttrInfo.offset, rid));
+                    TRY(indexHandle.InsertEntry(value, rid));
+                }
+                switch (updAttrInfo.attrType) {
+                    case INT:
+                        *(int *)(data + updAttrInfo.offset) = *(int *)value;
+                        break;
+                    case FLOAT:
+                        *(float *)(data + updAttrInfo.offset) = *(float *)value;
+                        break;
+                    case STRING:
+                        strcpy(data + updAttrInfo.offset, (char *)value);
+                        break;
+                }
+            }
+            TRY(fileHandle.UpdateRec(record));
+        }
+    }
+    TRY(scan.CloseScan());
+    if (updAttrInfo.indexNo != -1)
+        TRY(pIxm->CloseIndex(indexHandle));
+    TRY(pRmm->CloseFile(fileHandle));
+
+    std::cout << cnt << " tuple(s) updated." << std::endl;
+
+    return 0;
+}
+
+bool checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition) {
     switch (condition.op) {
         case NO_OP:
             return true;
@@ -605,7 +842,7 @@ bool QL_Manager::checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool
     return false;
 }
 
-bool QL_Manager::checkSatisfy(char *data, bool *isnull, const QL_Condition &condition) {
+bool checkSatisfy(char *data, bool *isnull, const QL_Condition &condition) {
     if (condition.bRhsIsAttr) {
         return checkSatisfy(data + condition.lhsAttr.offset,
                             !(condition.lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) ? isnull[condition.lhsAttr.nullableIndex] : false,
@@ -619,177 +856,4 @@ bool QL_Manager::checkSatisfy(char *data, bool *isnull, const QL_Condition &cond
                             condition.rhsValue.type == VT_NULL,
                             condition);
     }
-}
-
-RC checkAttrBelongsToRel(const RelAttr &relAttr, const char *relName) {
-    if (relAttr.relName == NULL || !strcmp(relName, relAttr.relName)) return 0;
-    return QL_ATTR_NOTEXIST;
-}
-
-RC QL_Manager::CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
-                                    const std::map<std::string, DataAttrInfo> &attrMap,
-                                    std::vector<QL_Condition> &retConditions) {
-    // check conditions are valid
-    for (int i = 0; i < nConditions; ++i) {
-        TRY(checkAttrBelongsToRel(conditions[i].lhsAttr, relName));
-        if (conditions[i].bRhsIsAttr)
-            TRY(checkAttrBelongsToRel(conditions[i].rhsAttr, relName));
-        auto iter = attrMap.find(conditions[i].lhsAttr.attrName);
-        if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
-        const DataAttrInfo &lhsAttr = iter->second;
-
-        QL_Condition cond;
-        cond.lhsAttr = lhsAttr;
-        cond.op = conditions[i].op;
-        cond.bRhsIsAttr = (bool)conditions[i].bRhsIsAttr;
-
-        bool nullable = ((lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL) == 0);
-        if (conditions[i].bRhsIsAttr) {
-            iter = attrMap.find(conditions[i].rhsAttr.attrName);
-            if (iter == attrMap.end()) return QL_ATTR_NOTEXIST;
-            const DataAttrInfo &rhsAttr = iter->second;
-            if (lhsAttr.attrType != rhsAttr.attrType)
-                return QL_ATTR_TYPES_MISMATCH;
-            cond.rhsAttr = rhsAttr;
-        } else {
-            if (!can_assign_to(lhsAttr.attrType, conditions[i].rhsValue.type, nullable))
-                return QL_VALUE_TYPES_MISMATCH;
-            cond.rhsValue = conditions[i].rhsValue;
-        }
-
-        retConditions.push_back(cond);
-    }
-    VLOG(1) << "all conditions are valid";
-
-    return 0;
-}
-
-RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *conditions) {
-    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
-    RelCatEntry relEntry;
-    TRY(pSmm->GetRelEntry(relName, relEntry));
-
-    int attrCount;
-    std::vector<DataAttrInfo> attributes;
-    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
-    std::map<std::string, DataAttrInfo> attrMap;
-    for (auto info : attributes)
-        attrMap[info.attrName] = info;
-
-    std::vector<QL_Condition> conds;
-    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
-
-    RM_FileHandle fileHandle;
-    TRY(pRmm->OpenFile(relName, fileHandle));
-    RM_FileScan scan;
-    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
-    RM_Record record;
-    RC retcode;
-    int cnt = 0;
-    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
-        VLOG(1);
-        if (retcode) return retcode;
-        char *data;
-        bool *isnull;
-        TRY(record.GetData(data));
-        TRY(record.GetIsnull(isnull));
-        bool shouldDelete = true;
-        for (int i = 0; i < nConditions && shouldDelete; ++i)
-            shouldDelete = checkSatisfy(data, isnull, conds[i]);
-        if (shouldDelete) {
-            ++cnt;
-            RID rid;
-            TRY(record.GetRid(rid));
-            TRY(fileHandle.DeleteRec(rid));
-        }
-    }
-    TRY(scan.CloseScan());
-    TRY(pRmm->CloseFile(fileHandle));
-
-    relEntry.recordCount -= cnt;
-    TRY(pSmm->UpdateRelEntry(relName, relEntry));
-    std::cout << cnt << " tuple(s) deleted." << std::endl;
-
-    return 0;
-}
-
-RC QL_Manager::Update(const char *relName, const RelAttr &updAttr,
-                      const int bIsValue, const RelAttr &rhsRelAttr, const Value &rhsValue,
-                      int nConditions, const Condition *conditions) {
-    if (!strcmp(relName, "relcat") || !strcmp(relName, "attrcat")) return QL_FORBIDDEN;
-    RelCatEntry relEntry;
-    TRY(pSmm->GetRelEntry(relName, relEntry));
-
-    TRY(checkAttrBelongsToRel(updAttr, relName));
-    if (!bIsValue)
-        TRY(checkAttrBelongsToRel(rhsRelAttr, relName));
-
-    int attrCount;
-    std::vector<DataAttrInfo> attributes;
-    TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, true));
-    std::map<std::string, DataAttrInfo> attrMap;
-    for (auto info : attributes)
-        attrMap[info.attrName] = info;
-
-    std::vector<QL_Condition> conds;
-    TRY(CheckConditionsValid(relName, nConditions, conditions, attrMap, conds));
-    for (int i = 0; i < nConditions; ++i)
-        if (!(conds[i].lhsAttr.attrSpecs & ATTR_SPEC_NOTNULL))
-            VLOG(1) << conds[i].lhsAttr.nullableIndex;
-
-    DataAttrInfo updAttrInfo = attrMap[updAttr.attrName];
-    int valAttrOffset = bIsValue ? 0 : attrMap[rhsRelAttr.attrName].offset;
-    bool nullable = !(updAttrInfo.attrSpecs & ATTR_SPEC_NOTNULL);
-    if (!nullable && bIsValue && rhsValue.type == VT_NULL)
-        return QL_ATTR_IS_NOTNULL;
-    if (nullable)
-        VLOG(1) << updAttrInfo.attrName << " nullableIndex: " << updAttrInfo.nullableIndex;
-
-    RM_FileHandle fileHandle;
-    TRY(pRmm->OpenFile(relName, fileHandle));
-    RM_FileScan scan;
-    TRY(scan.OpenScan(fileHandle, INT, 4, 0, NO_OP, NULL));
-    RM_Record record;
-    RC retcode;
-    int cnt = 0;
-    while ((retcode = scan.GetNextRec(record)) != RM_EOF) {
-        VLOG(1) << "next rec";
-        if (retcode) return retcode;
-        char *data;
-        bool *isnull;
-        TRY(record.GetData(data));
-        TRY(record.GetIsnull(isnull));
-        bool shouldUpdate = true;
-        for (int i = 0; i < nConditions && shouldUpdate; ++i)
-            shouldUpdate = checkSatisfy(data, isnull, conds[i]);
-        if (shouldUpdate) {
-            ++cnt;
-            if (bIsValue && rhsValue.type == VT_NULL) {
-                isnull[updAttrInfo.nullableIndex] = true;
-            } else {
-                VLOG(1) << "update";
-                if (nullable) isnull[updAttrInfo.nullableIndex] = false;
-                void *value = bIsValue ? rhsValue.data : data + valAttrOffset;
-                switch (updAttrInfo.attrType) {
-                    case INT:
-                        *(int *)(data + updAttrInfo.offset) = *(int *)value;
-                        break;
-                    case FLOAT:
-                        *(float *)(data + updAttrInfo.offset) = *(float *)value;
-                        break;
-                    case STRING:
-                        strcpy(data + updAttrInfo.offset, (char *)value);
-                        break;
-                }
-            }
-            TRY(fileHandle.UpdateRec(record));
-            VLOG(1) << "update end";
-        }
-    }
-    TRY(scan.CloseScan());
-    TRY(pRmm->CloseFile(fileHandle));
-
-    std::cout << cnt << " tuple(s) updated." << std::endl;
-
-    return 0;
 }

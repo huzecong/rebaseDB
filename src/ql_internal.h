@@ -5,7 +5,8 @@
 #ifndef REBASE_QL_INTERNAL_H
 #define REBASE_QL_INTERNAL_H
 
-#include "ql.h"
+#include "parser.h"
+#include "printer.h"
 
 #include <map>
 #include <string>

@@ -44,6 +44,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     TRY(scan.CloseScan());
 
     RID rid;
+    int indexNo = 0;
     short offset = 0;
     std::vector<short> nullableOffsets;
     for (int i = 0; i < attrCount; ++i) {
@@ -60,10 +61,14 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
         if (!(attrEntry.attrSpecs & ATTR_SPEC_NOTNULL))
             nullableOffsets.push_back(offset);
         offset += upper_align<4>(attrEntry.attrSize);
-        attrEntry.indexNo = -1;
+        if (attrEntry.attrSpecs & ATTR_SPEC_PRIMARYKEY) {
+            attrEntry.indexNo = indexNo++;
+        } else {
+            attrEntry.indexNo = -1;
+        }
         TRY(attrcat.InsertRec((const char *)&attrEntry, rid));
     }
-
+    
     RelCatEntry relEntry;
     memset(&relEntry, 0, sizeof(RelCatEntry));
     strcpy(relEntry.relName, relName);
@@ -71,13 +76,18 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount, AttrInfo *attribu
     relEntry.attrCount = attrCount;
     relEntry.indexCount = 0;
     relEntry.recordCount = 0;
+    
+    TRY(rmm->CreateFile(relName, relEntry.tupleLength,
+                        (short)nullableOffsets.size(), &nullableOffsets[0]));
+    
+    for (int i = 0; i < attrCount; ++i)
+        if (attributes[i].attrSpecs & ATTR_SPEC_PRIMARYKEY)
+            TRY(ixm->CreateIndex(relName, relEntry.indexCount++, attributes[i].attrType, attributes[i].attrLength));
+    
     TRY(relcat.InsertRec((const char *)&relEntry, rid));
 
     TRY(relcat.ForcePages());
     TRY(attrcat.ForcePages());
-
-    TRY(rmm->CreateFile(relName, relEntry.tupleLength,
-                        (short)nullableOffsets.size(), &nullableOffsets[0]));
 
     return 0;
 }

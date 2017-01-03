@@ -16,7 +16,7 @@
 #include "rm.h"
 #include "ix.h"
 #include "sm.h"
-#include "ql_queryplan.h"
+#include "ql_internal.h"
 
 //
 // QL_Manager: query language (DML)
@@ -57,14 +57,6 @@ private:
     RC CheckConditionsValid(const char *relName, int nConditions, const Condition *conditions,
                             const std::map<std::string, DataAttrInfo> &attrMap,
                             std::vector<QL_Condition> &retConditions);
-
-    RC PrintQueryPlan(const QL_QueryPlan &queryPlan, int indent = 0);
-
-    RC ExecuteQueryPlan(const QL_QueryPlan &queryPlan,
-                        const std::vector<RM_FileHandle> &fileHandles,
-                        const std::vector<AttrRecordInfo> &attrInfo,
-                        const std::vector<void *> &outerLoopData,
-                        char *recordData);
 
     bool checkSatisfy(char *lhsData, bool lhsIsnull, char *rhsData, bool rhsIsnull, const QL_Condition &condition);
     bool checkSatisfy(char *data, bool *isnull, const QL_Condition &condition);

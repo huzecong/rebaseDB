@@ -18,6 +18,8 @@ RC Test1(void);
 RC Test2(void);
 RC Test3(void);
 RC Test4(void);
+RC Test5(void);
+
 
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
@@ -25,6 +27,7 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test2,
     Test3,
     Test4,
+    Test5,
 };
 #define NUM_TESTS       ((int)((sizeof(tests)) / sizeof(tests[0])))    // number of tests
 
@@ -198,6 +201,10 @@ RC Test2() {
     return 0;
 }
 
+auto default_rid_gen = [](int n) {
+    return RID(n, n);
+};
+
 RC Test3() {
     LOG(INFO) << "test3";
     IX_IndexHandle ih;
@@ -236,9 +243,7 @@ RC Test4() {
     TRY(ixm.CreateIndex(kFileName, 1, INT, 4));
     TRY(ixm.OpenIndex(kFileName, 1, ih));
 
-    auto rid_gen = [](int n) {
-        return RID(n, n);
-    };
+    auto rid_gen = default_rid_gen;
 
     const int n = 1000;
 
@@ -252,7 +257,65 @@ RC Test4() {
     RID rid;
 
     for (int i = gtcmpi + 1; i < n; ++i) {
+        int pageNum, slotNum;
         TRY(sc.GetNextEntry(rid));
+        TRY(rid.GetPageNum(pageNum));
+        TRY(rid.GetSlotNum(slotNum));
+        // LOG(INFO) << "[" << pageNum << ", " << slotNum << "]";
+        TRY(check_rid_eq(rid, rid_gen(i)));
+    }
+    CHECK(sc.GetNextEntry(rid) == IX_EOF);
+    TRY(sc.CloseScan());
+
+    TRY(ixm.CloseIndex(ih));
+    TRY(ixm.DestroyIndex(kFileName, 1));
+    return 0;
+}
+
+extern void WriteLog(const char* psMessage);
+
+RC Test5() {
+    LOG(INFO) << "test5";
+    IX_IndexHandle ih;
+    TRY(ixm.CreateIndex(kFileName, 1, INT, 4));
+    TRY(ixm.OpenIndex(kFileName, 1, ih));
+
+    auto rid_gen = default_rid_gen;
+
+    const int n = 1000;
+
+    for (int i = 0; i < n; ++i) {
+        // LOG(INFO) << "Insert i = " << i;
+        TRY(ih.InsertEntry(&i, rid_gen(i)));
+    }
+
+    // ih.Traverse();
+
+    int ltcmpi = 800;
+    IX_IndexScan sc;
+    TRY(sc.OpenScan(ih, LT_OP, &ltcmpi));
+    RID rid;
+    int pageNum, slotNum;
+
+    for (int i = 0; i < ltcmpi; ++i) {
+        TRY(sc.GetNextEntry(rid));
+        TRY(rid.GetPageNum(pageNum));
+        TRY(rid.GetSlotNum(slotNum));
+        // LOG(INFO) << "to delete: [" << pageNum << ", " << slotNum << "]";
+        TRY(check_rid_eq(rid, rid_gen(i)));
+        TRY(ih.DeleteEntry(&i, rid_gen(i)));
+    }
+    CHECK(sc.GetNextEntry(rid) == IX_EOF);
+    TRY(sc.CloseScan());
+
+    // ih.Traverse();
+
+    TRY(sc.OpenScan(ih, NO_OP, NULL));
+    for (int i = ltcmpi; i < n; ++i) {
+        TRY(sc.GetNextEntry(rid));
+        TRY(rid.GetPageNum(pageNum));
+        TRY(rid.GetSlotNum(slotNum));
+        // LOG(INFO) << "get [" << pageNum << ", " << slotNum << "]";
         TRY(check_rid_eq(rid, rid_gen(i)));
     }
     CHECK(sc.GetNextEntry(rid) == IX_EOF);

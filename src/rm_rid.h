@@ -34,6 +34,10 @@ public:
     RC GetPageNum(PageNum &pageNum) const;         // Return page number
     RC GetSlotNum(SlotNum &slotNum) const;         // Return slot number
 
+    inline bool operator==(const RID& r) const {
+        return pageNum == r.pageNum && slotNum == r.slotNum;
+    }
+
 private:
 
     PageNum pageNum;

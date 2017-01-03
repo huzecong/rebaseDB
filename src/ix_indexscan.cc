@@ -60,6 +60,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp, void
     }
     currentNodeNum = indexHandle.root;
     currentEntryIndex = 0;
+    currentBucketIndex = 0;
     const PF_FileHandle &file = indexHandle.pfHandle;
     bool should_stop = false;
     while (!should_stop) {
@@ -124,18 +125,39 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
             } else {
                 currentNodeNum = entry->pageNum;
                 currentEntryIndex = 0;
+                currentBucketIndex = 0;
             }
         } else {
             if (__check(entry->key)) {
-                rid = RID(entry->pageNum, entry->slotNum);
-                should_exit = true;
+                if (entry->pageNum == kInvalidBucket) {
+                    ++currentEntryIndex;
+                    currentBucketIndex = 0;
+                } else {
+                    PF_PageHandle bucket;
+                    IX_BucketHeader *bucket_header;
+                    TRY(file.GetThisPage(entry->pageNum, bucket));
+                    TRY(bucket.GetData(CVOID(bucket_header)));
+                    // NOTE: currentBucketIndex may be greater than bucket_header->ridNum
+                    // as a result of deletion during the scan
+                    if (currentBucketIndex >= bucket_header->ridNum) {
+                        ++currentEntryIndex;
+                        currentBucketIndex = 0;
+                    } else {
+                        rid = bucket_header->rids[currentBucketIndex];
+                        ++currentBucketIndex;
+                        should_exit = true;
+                    }
+                    TRY(file.UnpinPage(entry->pageNum));
+                }
             } else {
                 if (compOp == LT_OP || compOp == LE_OP) {
                     ret = IX_EOF;
                     should_exit = true;
+                } else {
+                    ++currentEntryIndex;
+                    currentBucketIndex = 0;
                 }
             }
-            ++currentEntryIndex;
         }
         TRY(file.UnpinPage(openedPageNum));
     }

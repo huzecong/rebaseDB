@@ -58,6 +58,8 @@ class IX_IndexHandle {
 
     bool isHeaderDirty;
 
+    int ridsPerBucket;
+
     // use attrType and attrLength to calculate the
     // internal parameters
     void __initialize();
@@ -73,6 +75,11 @@ class IX_IndexHandle {
     RC new_node(int *nodeNum);
     RC delete_node(int nodeNum);
 
+    RC new_bucket(int *pageNum);
+    RC delete_bucket(int pageNum);
+    RC bucket_insert(int *pageNum, const RID &rid);
+    RC bucket_delete(int *pageNum, const RID &rid);
+
     RC insert_internal_entry(void *header, int index, void* key, int node);
     RC insert_entry(void *header, void* pData, const RID &rid);
     RC insert_internal(int nodeNum, int *splitNode, std::unique_ptr<char[]> *splitKey, void *pData, const RID &rid);
@@ -84,6 +91,8 @@ public:
     RC InsertEntry     (void *pData, const RID &rid);  // Insert new index entry
     RC DeleteEntry     (void *pData, const RID &rid);  // Delete index entry
     RC ForcePages      ();                             // Copy index to disk
+
+    RC Traverse(int nodeNum = 0, int depth = 0);
 };
 
 //
@@ -97,6 +106,7 @@ class IX_IndexScan {
     bool scanOpened;
     int currentNodeNum;
     int currentEntryIndex;
+    int currentBucketIndex;
 
     bool __check(void* key);
 
@@ -117,9 +127,11 @@ public:
 void IX_PrintError(RC rc);
 
 #define IX_EOF                  (START_IX_WARN + 0)
-#define IX_KEY_EXISTS           (START_IX_WARN + 1)
-#define IX_SCAN_NOT_OPENED      (START_IX_WARN + 2)
-#define IX_SCAN_NOT_CLOSED      (START_IX_WARN + 2)
+#define IX_ENTRY_EXISTS         (START_IX_WARN + 1)
+#define IX_ENTRY_DOES_NOT_EXIST (START_IX_WARN + 2)
+#define IX_SCAN_NOT_OPENED      (START_IX_WARN + 3)
+#define IX_SCAN_NOT_CLOSED      (START_IX_WARN + 4)
+#define IX_BUCKET_FULL          (START_IX_WARN + 5)
 #define IX_LASTWARN IX_SCAN_NOT_CLOSED
 
 

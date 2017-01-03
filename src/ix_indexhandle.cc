@@ -30,6 +30,7 @@ void IX_IndexHandle::__initialize() {
     entrySize = offsetof(Entry, key) + upper_align<4>(attrLength);
     // b = (PF_PAGE_SIZE - offsetof(Entry, key) - offsetof(IX_PageHeader, entries)) / entrySize + 1;
     b = 4; // for debugging
+    ridsPerBucket = (PF_PAGE_SIZE - offsetof(IX_BucketHeader, rids)) / sizeof(RID);
 }
 
 RC IX_IndexHandle::new_node(int *nodeNum) {
@@ -44,6 +45,76 @@ RC IX_IndexHandle::delete_node(int nodeNum) {
     LOG(FATAL) << "not implemented yet";
 }
 
+RC IX_IndexHandle::new_bucket(int *pageNum) {
+    PF_PageHandle ph;
+    IX_BucketHeader *header;
+    TRY(pfHandle.AllocatePage(ph));
+    TRY(ph.GetPageNum(*pageNum));
+    TRY(ph.GetData(CVOID(header)));
+    header->ridNum = 0;
+    TRY(pfHandle.UnpinPage(*pageNum));
+    return 0;
+}
+
+RC IX_IndexHandle::delete_bucket(int pageNum) {
+    return pfHandle.DisposePage(pageNum);
+}
+
+RC IX_IndexHandle::bucket_insert(int *pageNum, const RID &rid) {
+    if (*pageNum == kInvalidBucket) {
+        TRY(new_bucket(pageNum));
+    }
+    PF_PageHandle page;
+    IX_BucketHeader *header;
+    TRY(pfHandle.GetThisPage(*pageNum, page));
+    TRY(page.GetData(CVOID(header)));
+    int ret = 0;
+    if (header->ridNum == ridsPerBucket) {
+        ret = IX_BUCKET_FULL;
+    } else {
+        for (int i = 0; i < header->ridNum; ++i) {
+            if (rid == header->rids[i]) {
+                ret = IX_ENTRY_EXISTS;
+            }
+        }
+        if (ret == 0) {
+            header->rids[header->ridNum++] = rid;
+            TRY(pfHandle.MarkDirty(*pageNum));
+        }
+    }
+    TRY(pfHandle.UnpinPage(*pageNum));
+    return ret;
+}
+
+RC IX_IndexHandle::bucket_delete(int *pageNum, const RID &rid) {
+    if (*pageNum == kInvalidBucket) {
+        return IX_ENTRY_DOES_NOT_EXIST;
+    }
+    PF_PageHandle page;
+    IX_BucketHeader *header;
+    TRY(pfHandle.GetThisPage(*pageNum, page));
+    TRY(page.GetData(CVOID(header)));
+    RID* rids = header->rids;
+    int ret = IX_ENTRY_DOES_NOT_EXIST;
+    for (int i = 0; i < header->ridNum; ++i) {
+        if (rid == rids[i]) {
+            ret = 0;
+            memmove(rids + i, rids + (i + 1), sizeof(RID) * (header->ridNum - i - 1));
+            --header->ridNum;
+        }
+    }
+    bool to_delete = (header->ridNum == 0);
+    if (ret == 0) {
+        TRY(pfHandle.MarkDirty(*pageNum));
+    }
+    TRY(pfHandle.UnpinPage(*pageNum));
+    if (to_delete) {
+        delete_bucket(*pageNum);
+        *pageNum = kInvalidBucket;
+    }
+    return ret;
+}
+
 RC IX_IndexHandle::insert_entry(void *_header, void* pData, const RID &rid) {
     IX_PageHeader *header = (IX_PageHeader*)_header;
     short &n = header->childrenNum;
@@ -54,7 +125,8 @@ RC IX_IndexHandle::insert_entry(void *_header, void* pData, const RID &rid) {
         Entry* entry = (Entry*)__get_entry(header->entries, i);
         int c = __cmp(entry->key, pData);
         if (c == 0) {
-            return IX_KEY_EXISTS;
+            TRY(bucket_insert(&entry->pageNum, rid));
+            return 0;
         }
         if (c > 0) {
             index = i;
@@ -71,9 +143,9 @@ RC IX_IndexHandle::insert_entry(void *_header, void* pData, const RID &rid) {
     }
 
     Entry* dest = (Entry*)__get_entry(header->entries, index);
-    TRY(rid.GetPageNum(dest->pageNum));
-    TRY(rid.GetSlotNum(dest->slotNum));
+    dest->pageNum = kInvalidBucket;
     memcpy(dest->key, pData, attrLength);
+    TRY(bucket_insert(&dest->pageNum, rid));
     ++n;
     return 0;
 }
@@ -183,7 +255,6 @@ RC IX_IndexHandle::insert_internal(int nodeNum, int *splitNode, std::unique_ptr<
         TRY(pfHandle.UnpinPage(lowerSplitNode));
     }
 
-insert_internal_ret:
     TRY(pfHandle.MarkDirty(nodeNum));
     TRY(pfHandle.UnpinPage(nodeNum));
     return ret;
@@ -210,7 +281,7 @@ RC IX_IndexHandle::insert_leaf(int nodeNum, int *splitNode, void *pData, const R
         s_header->type = kLeafNode;
         int m = n / 2; // entries [m, n) goes to the new leaf
         bool insert_entry_in_new_leaf =
-            (__cmp(((Entry*)__get_entry(header, m))->key, pData) <= 0);
+            (__cmp(((Entry*)__get_entry(entries, m))->key, pData) <= 0);
         if (m < n - m && insert_entry_in_new_leaf) {
             ++m;
         }
@@ -224,7 +295,7 @@ RC IX_IndexHandle::insert_leaf(int nodeNum, int *splitNode, void *pData, const R
             ((Entry*)__get_entry(entries, n))->pageNum;
         n = m;
         ((Entry*)__get_entry(header->entries, n))->pageNum = *splitNode;
-        if (__cmp(((Entry*)__get_entry(s_header, 0))->key, pData) <= 0) {
+        if (__cmp(((Entry*)__get_entry(s_header->entries, 0))->key, pData) <= 0) {
             ret = insert_entry(s_header, pData, rid);
         } else {
             ret = insert_entry(header, pData, rid);
@@ -233,7 +304,6 @@ RC IX_IndexHandle::insert_leaf(int nodeNum, int *splitNode, void *pData, const R
         TRY(pfHandle.UnpinPage(*splitNode));
     }
 
-insert_leaf_ret:
     TRY(pfHandle.MarkDirty(nodeNum));
     TRY(pfHandle.UnpinPage(nodeNum));
     return ret;
@@ -295,7 +365,43 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
 }
 
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
-    return 0;
+    PF_PageHandle page;
+    IX_PageHeader *header;
+    int currentNodeNum = root;
+    bool should_stop = false;
+    int ret = 0;
+    while (!should_stop) {
+        TRY(pfHandle.GetThisPage(currentNodeNum, page));
+        int openedPageNum = currentNodeNum;
+        TRY(page.GetData(CVOID(header)));
+        if (header->type == kLeafNode) {
+            should_stop = true;
+            for (int i = 0; i < header->childrenNum; ++i) {
+                Entry* entry = (Entry*)__get_entry(header->entries, i);
+                int c = __cmp(entry->key, pData);
+                if (c == 0) {
+                    ret = bucket_delete(&entry->pageNum, rid);
+                    TRY(pfHandle.MarkDirty(openedPageNum));
+                    break;
+                } else if (c > 0) {
+                    ret = IX_ENTRY_DOES_NOT_EXIST;
+                    break;
+                }
+            }
+        } else {
+            int index = header->childrenNum - 1;
+            for (int i = 0; i < header->childrenNum - 1; ++i) {
+                Entry* entry = (Entry*)__get_entry(header->entries, i);
+                if (__cmp(entry->key, pData) > 0) {
+                    index = i;
+                    break;
+                }
+            }
+            currentNodeNum = ((Entry*)__get_entry(header->entries, index))->pageNum;
+        }
+        TRY(pfHandle.UnpinPage(openedPageNum));
+    }
+    return ret;
 }
 
 RC IX_IndexHandle::ForcePages() {
@@ -303,3 +409,40 @@ RC IX_IndexHandle::ForcePages() {
     // rmHandle.ForcePages();
     return 0;
 }
+
+RC IX_IndexHandle::Traverse(int nodeNum, int depth) {
+    if (nodeNum <= 0) {
+        nodeNum = root;
+    }
+    PF_PageHandle page;
+    IX_PageHeader *header;
+    TRY(pfHandle.GetThisPage(nodeNum, page));
+    TRY(page.GetData(CVOID(header)));
+    for (int i = 0; i < depth; ++i) {
+        printf("  ");
+    }
+    printf("[%d] %d ", nodeNum, header->childrenNum);
+    if (header->type == kInternalNode) {
+        printf("I");
+        for (int i = 0; i < header->childrenNum - 1; ++i) {
+            Entry* entry = (Entry*)__get_entry(header->entries, i);
+            printf(" p:%d k:%d", entry->pageNum, *(int*)&entry->key);
+        }
+        printf(" p:%d\n", (((Entry*)__get_entry(header->entries, header->childrenNum - 1))->pageNum));
+        for (int i = 0; i < header->childrenNum - 1; ++i) {
+            Entry* entry = (Entry*)__get_entry(header->entries, i);
+            Traverse(entry->pageNum, depth + 1);
+        }
+        Traverse(((Entry*)__get_entry(header->entries, header->childrenNum - 1))->pageNum, depth + 1);
+    } else {
+        printf("L");
+        for (int i = 0; i < header->childrenNum; ++i) {
+            Entry* entry = (Entry*)__get_entry(header->entries, i);
+            printf(" p:%d k:%d", entry->pageNum, *(int*)&entry->key);
+        }
+        printf(" >:%d\n", (((Entry*)__get_entry(header->entries, header->childrenNum))->pageNum));
+    }
+    TRY(pfHandle.UnpinPage(nodeNum));
+    return 0;
+}
+

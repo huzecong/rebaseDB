@@ -72,6 +72,7 @@ void WriteLog(const char *psMessage)
     }
     // Now we have the log file open and ready for writing
     fprintf (fLog, psMessage);
+    fflush (fLog);
 }
 #endif
 

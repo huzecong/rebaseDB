@@ -222,7 +222,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
             buffer[q] = 0;
             if (p == q) {  // null value
                 if (attributes[i].attrSpecs & ATTR_SPEC_NOTNULL) {
-                    LOG(INFO) << cnt + 1 << ":" << p << " " << "null value for non-nullable attribute" << std::endl;
+                    std::cerr << cnt + 1 << ":" << p << " " << "null value for non-nullable attribute" << std::endl;
                     return SM_FILE_FORMAT_INCORRECT;
                 }
                 isnull[attributes[i].nullableIndex] = true;

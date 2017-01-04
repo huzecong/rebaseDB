@@ -525,7 +525,7 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
         }
     }
 
-    LOG(INFO) << "check done";
+    VLOG(2) << "check done";
 
     for (int j = 0; j < recordsNum; ++j) {
         const Value *this_values = values + (j * attrCount);

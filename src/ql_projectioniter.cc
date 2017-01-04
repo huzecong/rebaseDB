@@ -48,11 +48,13 @@ RC QL_ProjectionIterator::Reset() {
     return inputIter->Reset();
 }
 
-void QL_ProjectionIterator::Print() {
-    inputIter->Print();
+void QL_ProjectionIterator::Print(std::string prefix) {
+    std::cout << prefix;
     std::cout << id << ": ";
     std::cout << "PROJECTION";
     for (auto proj : projectTo)
         std::cout << " " << proj.attrName;
     std::cout << std::endl;
+    editPrefix(prefix);
+    inputIter->Print(prefix + "└──");
 }

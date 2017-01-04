@@ -75,9 +75,11 @@ RC QL_IndexedJoinIterator::Reset() {
     return 0;
 }
 
-void QL_IndexedJoinIterator::Print() {
-    scanIter->Print();
-    searchIter->Print();
+void QL_IndexedJoinIterator::Print(std::string prefix) {
+    std::cout << prefix;
     std::cout << id << ": ";
     std::cout << "INDEXED JOIN " << scanIter->getID() << " and " << searchIter->getID() << std::endl;
+    editPrefix(prefix);
+    scanIter->Print(prefix + "├──");
+    searchIter->Print(prefix + "└──");
 }

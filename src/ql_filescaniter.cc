@@ -20,7 +20,8 @@ RC QL_FileScanIterator::Reset() {
     return 0;
 }
 
-void QL_FileScanIterator::Print() {
+void QL_FileScanIterator::Print(std::string prefix) {
+    std::cout << prefix;
     std::cout << id << ": ";
     std::cout << "SCAN " << relName << std::endl;
 }

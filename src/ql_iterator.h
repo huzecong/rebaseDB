@@ -18,6 +18,7 @@ protected:
     int id;
     static RM_Manager *rmm;
     static IX_Manager *ixm;
+    void editPrefix(std::string &prefix);
 public:
     QL_Iterator() {
         id = ++totalIters;
@@ -36,7 +37,7 @@ public:
     virtual RC GetNextRec(RM_Record &rec) = 0;
 
     virtual RC Reset() = 0;
-    virtual void Print() = 0;
+    virtual void Print(std::string prefix = "") = 0;
 };
 
 class QL_FileScanIterator : public QL_Iterator {
@@ -48,7 +49,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 class QL_SelectionIterator : public QL_Iterator {
@@ -59,7 +60,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 class QL_ProjectionIterator : public QL_Iterator {
@@ -78,7 +79,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 class QL_IndexSearchIterator : public QL_Iterator {
@@ -92,7 +93,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 class QL_NestedLoopJoinIterator : public QL_Iterator {
@@ -114,7 +115,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 class QL_IndexedJoinIterator : public QL_Iterator {
@@ -139,7 +140,7 @@ public:
 
     RC GetNextRec(RM_Record &rec) override;
     RC Reset() override;
-    void Print() override;
+    void Print(std::string prefix = "") override;
 };
 
 

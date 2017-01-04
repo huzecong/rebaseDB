@@ -34,13 +34,16 @@ QL_NestedLoopJoinIterator::~QL_NestedLoopJoinIterator() {
 RC QL_NestedLoopJoinIterator::GetNextRec(RM_Record &rec) {
     int retcode = inputIter2->GetNextRec(rec2);
     while (retcode == RM_EOF) {
-        TRY(inputIter1->GetNextRec(rec1));
+        if (int rc = inputIter1->GetNextRec(rec1)) {
+            if (rc == RM_EOF) return RM_EOF;
+            TRY(rc);
+        }
         TRY(rec1.GetData(data1));
         TRY(rec1.GetIsnull(isnull1));
         TRY(inputIter2->Reset());
         retcode = inputIter2->GetNextRec(rec2);
     }
-    if (retcode) return retcode;
+    TRY(retcode);
     TRY(rec2.GetData(data2));
     TRY(rec2.GetIsnull(isnull2));
     memcpy(data, data1, rec1Size);
@@ -61,9 +64,11 @@ RC QL_NestedLoopJoinIterator::Reset() {
     return 0;
 }
 
-void QL_NestedLoopJoinIterator::Print() {
-    inputIter1->Print();
-    inputIter2->Print();
+void QL_NestedLoopJoinIterator::Print(std::string prefix) {
+    std::cout << prefix;
     std::cout << id << ": ";
     std::cout << "NESTED-LOOP JOIN " << inputIter1->getID() << " and " << inputIter2->getID() << std::endl;
+    editPrefix(prefix);
+    inputIter1->Print(prefix + "├──");
+    inputIter2->Print(prefix + "└──");
 }

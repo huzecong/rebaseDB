@@ -19,7 +19,7 @@ RC QL_IndexSearchIterator::GetNextRec(RM_Record &rec) {
     RID rid;
     int retcode = scan.GetNextEntry(rid);
     if (retcode == IX_EOF) return RM_EOF;
-    if (retcode) return retcode;
+    TRY(retcode);
     TRY(fileHandle.GetRec(rid, rec));
     return 0;
 }
@@ -30,7 +30,8 @@ RC QL_IndexSearchIterator::Reset() {
     return 0;
 }
 
-void QL_IndexSearchIterator::Print() {
+void QL_IndexSearchIterator::Print(std::string prefix) {
+    std::cout << prefix;
     std::cout << id << ": ";
     std::cout << "SEARCH" << " " << condition << std::endl;
 }

@@ -18,8 +18,7 @@ DEFINE_string(c, "-",
         "    reads commands from <file>\n" \
         "    use '-' (without quotes) to use interactive mode.");
 
-DEFINE_bool(n, false,
-        "dry-run mode (i.e. do nothing other than echoing the command.)");
+DECLARE_bool(n);
 
 using namespace std;
 

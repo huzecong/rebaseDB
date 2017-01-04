@@ -26,8 +26,6 @@
 extern SM_Manager *pSmm;
 extern QL_Manager *pQlm;
 
-DECLARE_bool(n);
-
 #define E_OK                0
 #define E_INCOMPATIBLE      -1
 #define E_TOOMANY           -2
@@ -46,6 +44,9 @@ DECLARE_bool(n);
  * file pointer to which error messages are printed
  */
 #define ERRFP stderr
+
+DEFINE_bool(n, false,
+        "dry-run mode (i.e. do nothing other than echoing the command.)");
 
 /*
  * local functions

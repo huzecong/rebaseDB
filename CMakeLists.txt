@@ -11,7 +11,12 @@ find_package(BISON)
 find_package(glog)
 find_package(gflags)
 
-include_directories(${GLOG_INCLUDE_DIR})
+if (GLOG_FOUND)
+    include_directories(${GLOG_INCLUDE_DIR})
+else()
+    set(GLOG_LIBRARIES "-lglog -lgflags")
+endif()
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 

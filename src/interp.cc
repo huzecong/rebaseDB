@@ -108,12 +108,12 @@ RC interp(NODE *n) {
 
     case N_SHOWDBS: {
         if (db_opened) {
-            VLOG(1) << "closing current database";
+            VLOG(2) << "closing current database";
             if ((errval = pSmm->CloseDb())) break;
         }
         static char cwd[256];
         CHECK(getcwd(cwd, 256) == cwd) << "current directory too long.";
-        VLOG(1) << "got current working directory " << cwd;
+        VLOG(2) << "got current working directory " << cwd;
         DIR* d = opendir(".");
         struct dirent *ent;
         while ((ent = readdir(d)) != NULL) {
@@ -131,7 +131,7 @@ RC interp(NODE *n) {
         }
         closedir(d);
         if (db_opened) {
-            VLOG(1) << "reopening previous database";
+            VLOG(2) << "reopening previous database";
             errval = pSmm->OpenDb(current_db);
         }
         break;
@@ -577,7 +577,7 @@ static int mk_conditions(NODE *list, int max, Condition conditions[]) {
                 mk_value(current->u.CONDITION.rhsValue, conditions[i].rhsValue);
             }
         } else {
-            VLOG(1) << "null";
+            VLOG(3) << "null";
             conditions[i].bRhsIsAttr = FALSE;
             conditions[i].rhsValue = {VT_NULL, NULL};
         }

@@ -134,7 +134,7 @@ inline T upper_align(T x) {
 
 #define TRY(_x) \
     if (int __rc = (_x)) { \
-        LOG(WARNING) << "non-zero return code " << __rc; \
+        VLOG(1) << "non-zero return code " << __rc; \
         return __rc; \
     }
 

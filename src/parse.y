@@ -386,7 +386,7 @@ set
    ;
 
 help
-   : RW_HELP opt_relname
+   : RW_DESC opt_relname
    {
       $$ = help_node($2);
    }
@@ -700,7 +700,7 @@ void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm)
       if(yyparse() == 0 && parse_tree != NULL)
          if ((rc = interp(parse_tree))) {
             PrintError(rc);
-            if (rc )
+            if (rc < 0)
                bExit = TRUE;
          }
    }

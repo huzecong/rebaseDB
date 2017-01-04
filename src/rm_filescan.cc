@@ -50,13 +50,13 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle, AttrType attrType, int
     int nullableNum = fileHeader->nullableNum;
     for (int i = 0; i < nullableNum; ++i) {
         if (fileHeader->nullableOffsets[i] == attrOffset) {
-            VLOG(1) << "nullableIndex = " << i;
+            VLOG(2) << "nullableIndex = " << i;
             nullableIndex = i;
             break;
         }
     }
     if (nullableIndex == -1) {
-        VLOG(2) << "given offset was not found to be a nullable field.";
+        VLOG(3) << "given offset was not found to be a nullable field.";
     }
     currentPageNum = 1;
     currentSlotNum = 0;

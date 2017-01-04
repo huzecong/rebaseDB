@@ -111,7 +111,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
     std::vector<RelCatEntry> relEntries((unsigned long)nRelations);
     for (int i = 0; i < nRelations; ++i)
         TRY(pSmm->GetRelEntry(relations[i], relEntries[i]));
-    VLOG(1) << "files opened";
+    VLOG(2) << "files opened";
 
     /**
      * Check if query is valid
@@ -136,7 +136,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
             if (attrNameCount[attrName] == 1)
                 attrMap[std::make_pair(std::string(), attrName)] = attrInfo[i][j];
         }
-    VLOG(1) << "attribute name mapping created";
+    VLOG(2) << "attribute name mapping created";
 
     // check selected attributes exist
     if (nSelAttrs == 1 && !strcmp(selAttrs[0].attrName, "*"))
@@ -146,7 +146,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
         if (selAttrs[i].relName == NULL && attrNameCount[std::string(selAttrs[i].attrName)] > 1)
             return QL_AMBIGUOUS_ATTR_NAME;
     }
-    VLOG(1) << "all attributes exist";
+    VLOG(2) << "all attributes exist";
 
     // check conditions are valid
     for (int i = 0; i < nConditions; ++i) {
@@ -162,7 +162,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
                 return QL_VALUE_TYPES_MISMATCH;
         }
     }
-    VLOG(1) << "all conditions are valid";
+    VLOG(2) << "all conditions are valid";
 
     /**
      * Generate query plan
@@ -186,7 +186,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
             finalProjections.push_back(info);
         }
     }
-    VLOG(1) << "target projections built";
+    VLOG(2) << "final projections built";
 
     // gather simple conditions and projections for each table
     std::vector<std::vector<QL_Condition>> simpleConditions((unsigned long)nRelations);
@@ -237,7 +237,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
         if (simpleProjections[i] == attrInfo[i])
             simpleProjections[i].clear();
     }
-    VLOG(1) << "simple conditions and projections gathered";
+    VLOG(2) << "simple conditions and projections gathered";
 
     // helper functions
     std::vector<bool> filtered((unsigned long)nRelations);
@@ -276,7 +276,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
             updateAttrInfo(relNum, projectTo);
         }
         iterators[relNum] = iter;
-        VLOG(1) << "performed simple operations on " << relations[relNum];
+        VLOG(2) << "performed simple operations on " << relations[relNum];
     };
     auto findIndexedCondition = [&](int relNum, QL_Condition &indexedCondition) -> bool {
         bool found = false;
@@ -296,7 +296,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
         if (hasIndexedCondition) {
             rhs = new QL_IndexSearchIterator(indexedCondition);
             erase_from(simpleConditions[relNum], indexedCondition);
-            VLOG(1) << relations[relNum] << " contains indexed condition";
+            VLOG(2) << relations[relNum] << " contains indexed condition";
         } else {
             rhs = new QL_FileScanIterator(relations[relNum]);
         }
@@ -354,7 +354,7 @@ RC QL_Manager::Select(int nSelAttrs, const RelAttr *selAttrs,
         }
 
         int searchAttrOffset = attrMaps[rhsNum][make_tag(condition.rhsAttr)].offset;
-        VLOG(1) << "search offset " << searchAttrOffset;
+        VLOG(2) << "search offset " << searchAttrOffset;
         QL_Iterator *iter = new QL_IndexedJoinIterator(iterators[rhsNum], attrInfo[rhsNum],
                                                        lhsSearch, searchAttrOffset,
                                                        iterators[lhsNum], attrInfo[lhsNum]);
@@ -525,7 +525,7 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
         }
     }
 
-    VLOG(2) << "check done";
+    VLOG(3) << "check done";
 
     for (int j = 0; j < recordsNum; ++j) {
         const Value *this_values = values + (j * attrCount);
@@ -642,7 +642,7 @@ RC QL_Manager::CheckConditionsValid(const char *relName, int nConditions, const 
 
         retConditions.push_back(cond);
     }
-    VLOG(1) << "all conditions are valid";
+    VLOG(2) << "all conditions are valid";
 
     return 0;
 }

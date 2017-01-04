@@ -270,7 +270,7 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
         }
         ++cnt;
     }
-    VLOG(1) << "file loaded";
+    VLOG(2) << "file loaded";
 
     relEntry.recordCount = cnt;
     TRY(UpdateRelEntry(relName, relEntry));
@@ -457,7 +457,7 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<
         } else {
             attributes[i].nullableIndex = -1;
         }
-//        VLOG(1) << attributes[i].attrName << " " << attributes[i].attrSpecs << " " << attributes[i].nullableIndex;
+//        VLOG(2) << attributes[i].attrName << " " << attributes[i].attrSpecs << " " << attributes[i].nullableIndex;
         ++i;
     }
     TRY(scan.CloseScan());

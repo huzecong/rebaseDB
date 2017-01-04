@@ -26,6 +26,8 @@
 extern SM_Manager *pSmm;
 extern QL_Manager *pQlm;
 
+DECLARE_bool(n);
+
 #define E_OK                0
 #define E_INCOMPATIBLE      -1
 #define E_TOOMANY           -2
@@ -81,6 +83,10 @@ RC interp(NODE *n) {
     /* if input not coming from a terminal, then echo the query */
      // if (!isatty(0))
         echo_query(n);
+
+    if (FLAGS_n) {
+        return 0;
+    }
 
     static char cmd[MAXNAME * 2];
 

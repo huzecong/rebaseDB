@@ -167,6 +167,7 @@ QL_Manager *pQlm;          // QL component manager
       non_mt_cond_list
       condition
       relattr_or_value
+      non_mt_quoted_values_list
       non_mt_value_list
       value
       buffer
@@ -414,9 +415,9 @@ query
    ;
 
 insert
-   : RW_INSERT RW_INTO T_STRING RW_VALUES '(' non_mt_value_list ')'
+   : RW_INSERT RW_INTO T_STRING RW_VALUES non_mt_quoted_values_list
    {
-      $$ = insert_node($3, $6);
+      $$ = insert_node($3, $5);
    }
    ;
 
@@ -553,6 +554,17 @@ relattr_or_value
    | value
    {
       $$ = relattr_or_value_node(NULL, $1);
+   }
+   ;
+
+non_mt_quoted_values_list
+   : '(' non_mt_value_list ')'
+   {
+      $$ = $2;
+   }
+   | '(' non_mt_value_list ')' ',' non_mt_quoted_values_list
+   {
+      $$ = prepend_list($2, $5);
    }
    ;
 

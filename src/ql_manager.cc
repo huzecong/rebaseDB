@@ -493,88 +493,102 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
     bool kSort = true;
     std::vector<DataAttrInfo> attributes;
     TRY(pSmm->GetDataAttrInfo(relName, attrCount, attributes, kSort));
-    if (nValues != attrCount) {
+    if (nValues % attrCount != 0) {
         return QL_ATTR_COUNT_MISMATCH;
     }
+    int recordsNum = nValues / attrCount;
     int nullableNum = 0;
     for (int i = 0; i < attrCount; ++i) {
         bool nullable = ((attributes[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0);
         if (nullable) {
             ++nullableNum;
         }
-        if (!can_assign_to(attributes[i].attrType, values[i].type, nullable)) {
-            return QL_VALUE_TYPES_MISMATCH;
-        }
-    }
-
-    RM_FileHandle fh;
-    IX_IndexHandle indexHandle;
-    TRY(pRmm->OpenFile(relName, fh));
-    IX_IndexScan scan;
-    bool duplicate = false;
-    for (int i = 0; i < attrCount; ++i)
-        if (attributes[i].attrSpecs & ATTR_SPEC_PRIMARYKEY) {
-            TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
-            RID rid;
-            TRY(scan.OpenScan(indexHandle, EQ_OP, values[i].data));
-            int retcode = scan.GetNextEntry(rid);
-            TRY(scan.CloseScan());
-            TRY(pIxm->CloseIndex(indexHandle));
-            if (retcode != IX_EOF) {
-                if (retcode != 0) return retcode;
-                duplicate = true;
-            }
-            break;
-        }
-    if (duplicate) return QL_DUPLICATE_PRIMARY_KEY;
-
-    ARR_PTR(data, char, relEntry.tupleLength);
-    ARR_PTR(isnull, bool, nullableNum);
-    int nullableIndex = 0;
-    for (int i = 0; i < attrCount; ++i) {
-        bool nullable = ((attributes[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0);
-        if (nullable) {
-            isnull[nullableIndex++] = (values[i].type == VT_NULL);
-        }
-        if (values[i].type == VT_NULL) {
-            continue;
-        }
-        auto &attr = attributes[i];
-        void *value = values[i].data;
-        char *dest = data + attr.offset;
-        switch (attr.attrType) {
-            case INT: {
-                *(int *)dest = *(int *)value;
-                break;
-            }
-            case FLOAT: {
-                *(float *)dest = *(float *)value;
-                break;
-            }
-            case STRING: {
-                char *src = (char *)value;
-                if (strlen(src) > attr.attrDisplayLength) return QL_STRING_VAL_TOO_LONG;
-                strcpy(dest, src);
-                break;
+        for (int j = 0; j < recordsNum; ++j) {
+            // LOG(INFO) << "checking " << j * attrCount + i;
+            if (!can_assign_to(attributes[i].attrType, values[j * attrCount + i].type, nullable)) {
+                LOG(WARNING) << "type mismatch at i = " << i << ", j = " << j;
+                LOG(WARNING) << "attrtype = " << attributes[i].attrType <<
+                    ", valuetype = " << values[j * attrCount + i];
+                return QL_VALUE_TYPES_MISMATCH;
             }
         }
     }
 
-    RID rid;
+    LOG(INFO) << "check done";
 
-    TRY(fh.InsertRec(data, rid, isnull));
-    for (int i = 0; i < attrCount; ++i) {
-        if (attributes[i].indexNo != -1) {
-            TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
-            TRY(indexHandle.InsertEntry(data + attributes[i].offset, rid));
-            // TRY(indexHandle.Traverse());
-            TRY(pIxm->CloseIndex(indexHandle));
+    for (int j = 0; j < recordsNum; ++j) {
+        const Value *this_values = values + (j * attrCount);
+
+        RM_FileHandle fh;
+        IX_IndexHandle indexHandle;
+        TRY(pRmm->OpenFile(relName, fh));
+        IX_IndexScan scan;
+        bool duplicate = false;
+        for (int i = 0; i < attrCount; ++i)
+            if (attributes[i].attrSpecs & ATTR_SPEC_PRIMARYKEY) {
+                TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
+                RID rid;
+                TRY(scan.OpenScan(indexHandle, EQ_OP, this_values[i].data));
+                int retcode = scan.GetNextEntry(rid);
+                TRY(scan.CloseScan());
+                TRY(pIxm->CloseIndex(indexHandle));
+                if (retcode != IX_EOF) {
+                    if (retcode != 0) return retcode;
+                    duplicate = true;
+                }
+                break;
+            }
+        if (duplicate) return QL_DUPLICATE_PRIMARY_KEY;
+
+        ARR_PTR(data, char, relEntry.tupleLength);
+        ARR_PTR(isnull, bool, nullableNum);
+        int nullableIndex = 0;
+        for (int i = 0; i < attrCount; ++i) {
+            bool nullable = ((attributes[i].attrSpecs & ATTR_SPEC_NOTNULL) == 0);
+            if (nullable) {
+                isnull[nullableIndex++] = (this_values[i].type == VT_NULL);
+            }
+            if (this_values[i].type == VT_NULL) {
+                continue;
+            }
+            auto &attr = attributes[i];
+            void *value = this_values[i].data;
+            char *dest = data + attr.offset;
+            switch (attr.attrType) {
+                case INT: {
+                    *(int *)dest = *(int *)value;
+                    break;
+                }
+                case FLOAT: {
+                    *(float *)dest = *(float *)value;
+                    break;
+                }
+                case STRING: {
+                    char *src = (char *)value;
+                    if (strlen(src) > attr.attrDisplayLength) return QL_STRING_VAL_TOO_LONG;
+                    strcpy(dest, src);
+                    break;
+                }
+            }
         }
-    }
-    TRY(pRmm->CloseFile(fh));
 
-    ++relEntry.recordCount;
-    TRY(pSmm->UpdateRelEntry(relName, relEntry));
+        RID rid;
+
+        TRY(fh.InsertRec(data, rid, isnull));
+        for (int i = 0; i < attrCount; ++i) {
+            if (attributes[i].indexNo != -1) {
+                TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
+                TRY(indexHandle.InsertEntry(data + attributes[i].offset, rid));
+                // TRY(indexHandle.Traverse());
+                TRY(pIxm->CloseIndex(indexHandle));
+            }
+        }
+        TRY(pRmm->CloseFile(fh));
+
+        ++relEntry.recordCount;
+        TRY(pSmm->UpdateRelEntry(relName, relEntry));
+
+    }
 
     return 0;
 }

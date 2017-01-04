@@ -16,6 +16,8 @@
                                         // string-type attribute
 #define MAXATTRS      40                // maximum number of attributes
                                         // in a relation
+#define MAXINSERTATTRS  1024            // maximum number of attributes
+                                        // in a single INSERT command
 
 //#define yywrap() 1
 inline static int yywrap() {

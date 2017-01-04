@@ -237,6 +237,7 @@ NODE *attrtype_node(char *attrname, char *type, int size, enum AttrSpec spec);
 NODE *relation_node(char *relname);
 NODE *list_node(NODE *n);
 NODE *prepend(NODE *n, NODE *list);
+NODE *prepend_list(NODE *l, NODE* list);
 
 #ifdef __cplusplus
 extern "C" void reset_scanner(void);

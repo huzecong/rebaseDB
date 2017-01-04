@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/types.h>
 #include "redbase.h"
 #include "parser_internal.h"
@@ -18,7 +19,7 @@
 /*
  * total number of nodes available for a given parse-tree
  */
-#define MAXNODE     100
+#define MAXNODE     8192
 
 static NODE nodepool[MAXNODE];
 static int nodeptr = 0;
@@ -61,7 +62,7 @@ NODE *newnode(NODEKIND kind) {
 
     /* if we've used up all of the nodes then error */
     if (nodeptr == MAXNODE) {
-        fprintf(stderr, "out of memory\n");
+        fprintf(stderr, "%s:%s out of memory\n", __FILE__, __FUNCTION__);
         exit(1);
     }
 
@@ -359,4 +360,15 @@ NODE *prepend(NODE *n, NODE *list) {
     newlist -> u.LIST.curr = n;
     newlist -> u.LIST.next = list;
     return newlist;
+}
+
+NODE *prepend_list(NODE *l, NODE *list) {
+    NODE* r = l;
+    assert(l->kind == N_LIST);
+    while (l->u.LIST.next != NULL) {
+        l = l->u.LIST.next;
+        assert(l->kind == N_LIST);
+    }
+    l->u.LIST.next = list;
+    return r;
 }

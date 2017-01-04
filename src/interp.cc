@@ -310,10 +310,10 @@ RC interp(NODE *n) {
 
     case N_INSERT: {          /* for Insert() */
         int nValues = 0;
-        Value values[MAXATTRS];
+        Value *values = new Value[MAXINSERTATTRS];
 
         /* Make a list of Values suitable for sending to Insert */
-        nValues = mk_values(n->u.INSERT.valuelist, MAXATTRS, values);
+        nValues = mk_values(n->u.INSERT.valuelist, MAXINSERTATTRS, values);
         if (nValues < 0) {
             print_error((char*)"insert", nValues);
             break;
@@ -322,6 +322,8 @@ RC interp(NODE *n) {
         /* Make the call to insert */
         errval = pQlm->Insert(n->u.INSERT.relname,
                               nValues, values);
+
+        delete [] values;
         break;
     }
 
@@ -594,6 +596,7 @@ static int mk_values(NODE *list, int max, Value values[]) {
         if (i == max)
             return E_TOOMANY;
 
+        // fprintf(stderr, "mk_values %d\n", i);
         mk_value(list->u.LIST.curr, values[i]);
     }
 
@@ -608,6 +611,7 @@ static void mk_value(NODE *node, Value &value) {
         value.type = VT_NULL;
         value.data = NULL;
     } else {
+        assert(node->kind == N_VALUE);
         // value.type = node->u.VALUE.type;
         switch (node->u.VALUE.type) {
         case INT:

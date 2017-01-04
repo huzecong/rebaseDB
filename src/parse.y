@@ -688,7 +688,7 @@ void RBparse(PF_Manager &pfm, SM_Manager &smm, QL_Manager &qlm)
       if(yyparse() == 0 && parse_tree != NULL)
          if ((rc = interp(parse_tree))) {
             PrintError(rc);
-            if (rc < 0)
+            if (rc )
                bExit = TRUE;
          }
    }

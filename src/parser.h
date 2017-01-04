@@ -53,7 +53,7 @@ struct Condition {
 
 };
 
-static struct Condition NULLCONDITION;
+// static struct Condition NULLCONDITION;
 
 #ifdef __cplusplus
 std::ostream &operator<<(std::ostream &s, const CompOp &op);

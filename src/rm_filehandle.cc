@@ -66,6 +66,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool *isnull) {
         TRY(pfHandle.GetLastPage(pageHandle));
         TRY(pageHandle.GetPageNum(pageNum));
         TRY(pageHandle.GetData(data));
+        CHECK(((RM_PageHeader *)data)->allocatedRecords <= recordsPerPage);
         if (((RM_PageHeader *)data)->allocatedRecords == recordsPerPage) {
             TRY(pfHandle.UnpinPage(pageNum));
             TRY(pfHandle.AllocatePage(pageHandle));
@@ -77,9 +78,12 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid, bool *isnull) {
         }
         slotNum = ((RM_PageHeader *)data)->allocatedRecords;
         destination = data + pageHeaderSize + recordSize * slotNum;
+        // LOG(INFO) << "recordSize = " << recordSize << " slotnum = " << slotNum;
+        // LOG(INFO) << "recordsPerPage = " << recordsPerPage << " allocated = " <<
+            // ((RM_PageHeader *)data)->allocatedRecords;
+        ++((RM_PageHeader *)data)->allocatedRecords;
     }
     memcpy(destination, pData, (size_t)recordSize);
-    ++((RM_PageHeader *)data)->allocatedRecords;
     setBitMap(((RM_PageHeader *)data)->bitmap, slotNum, true);
     for (int i = 0; i < nullableNum; ++i) {
         setBitMap(((RM_PageHeader *)data)->bitmap,

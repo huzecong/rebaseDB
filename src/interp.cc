@@ -79,7 +79,7 @@ RC interp(NODE *n) {
     RC errval = 0;         /* returned error value      */
 
     /* if input not coming from a terminal, then echo the query */
-     if (!isatty(0))
+     // if (!isatty(0))
         echo_query(n);
 
     static char cmd[MAXNAME * 2];

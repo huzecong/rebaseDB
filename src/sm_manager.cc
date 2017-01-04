@@ -260,10 +260,13 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
             }
             p = q + 1;
         }
+        // LOG(INFO) << "=================================== " << cnt;
         TRY(fileHandle.InsertRec(data, rid, isnull));
         for (int i = 0; i < attrCount; ++i) {
-            if (attributes[i].indexNo != -1)
+            if (attributes[i].indexNo != -1) {
                 TRY(indexHandles[i].InsertEntry(data + attributes[i].offset, rid));
+                // TRY(indexHandles[i].Traverse());
+            }
         }
         ++cnt;
     }
@@ -273,8 +276,10 @@ RC SM_Manager::Load(const char *relName, const char *fileName) {
     TRY(UpdateRelEntry(relName, relEntry));
 
     for (int i = 0; i < attrCount; ++i)
-        if (attributes[i].indexNo != -1)
-            TRY(ixm->CloseIndex(indexHandles[i]))
+        if (attributes[i].indexNo != -1) {
+            // TRY(indexHandles[i].Traverse());
+            TRY(ixm->CloseIndex(indexHandles[i]));
+        }
     TRY(rmm->CloseFile(fileHandle));
 
     std::cout << cnt << " values loaded." << std::endl;

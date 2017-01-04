@@ -114,8 +114,9 @@ typedef char Boolean;
 #define NULL 0
 #endif
 
-#define TRY(_x) if (int __rc = (_x)) return __rc;
+
 #define CVOID(_x) (*(reinterpret_cast<char**>(&(_x))))
+
 #define ARR_PTR(_name, _type, _size) \
     auto __##_name##__ = std::make_unique<_type[]>((size_t)_size); \
     _type * _name = __##_name##__.get()
@@ -126,6 +127,22 @@ template <int N, class T>
 inline T upper_align(T x) {
     return (x + (N - 1)) & ~((unsigned)(N - 1));
 }
-#endif
+
+#include <glog/logging.h>
+
+#define TRY(_x) \
+    if (int __rc = (_x)) { \
+        LOG(WARNING) << "non-zero return code " << __rc; \
+        return __rc; \
+    }
+
+#else
+
+#define TRY(_x) \
+    if (int __rc = (-x)) { \
+        return __rc; \
+    }
+
+#endif // __cpluslus
 
 #endif

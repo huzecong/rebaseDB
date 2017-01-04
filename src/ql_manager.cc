@@ -2,6 +2,7 @@
 // Created by Kanari on 2016/12/24.
 //
 
+#include <algorithm>
 #include <set>
 #include <numeric>
 #include <cassert>
@@ -566,6 +567,7 @@ RC QL_Manager::Insert(const char *relName, int nValues, const Value *values) {
         if (attributes[i].indexNo != -1) {
             TRY(pIxm->OpenIndex(relName, attributes[i].indexNo, indexHandle));
             TRY(indexHandle.InsertEntry(data + attributes[i].offset, rid));
+            // TRY(indexHandle.Traverse());
             TRY(pIxm->CloseIndex(indexHandle));
         }
     }
@@ -668,8 +670,10 @@ RC QL_Manager::Delete(const char *relName, int nConditions, const Condition *con
     }
     TRY(scan.CloseScan());
     for (int i = 0; i < attrCount; ++i)
-        if (attributes[i].indexNo != -1)
+        if (attributes[i].indexNo != -1) {
+            // TRY(indexHandles[i].Traverse());
             TRY(pIxm->CloseIndex(indexHandles[i]));
+        }
     TRY(pRmm->CloseFile(fileHandle));
 
     relEntry.recordCount -= cnt;

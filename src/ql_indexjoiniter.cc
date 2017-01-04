@@ -40,7 +40,13 @@ QL_IndexedJoinIterator::~QL_IndexedJoinIterator() {
 RC QL_IndexedJoinIterator::GetNextRec(RM_Record &rec) {
     int retcode = searchIter->GetNextRec(rec2);
     while (retcode == RM_EOF) {
-        TRY(scanIter->GetNextRec(rec1));
+        // prevent RM_EOF from triggering error reporting mechanism in TRY
+        if (int rc = scanIter->GetNextRec(rec1)) {
+            if (rc != RM_EOF) {
+                TRY(rc);
+            }
+            return rc;
+        }
         TRY(rec1.GetData(data1));
         TRY(rec1.GetIsnull(isnull1));
         indexIter->ChangeValue(data1 + searchAttrOffset);

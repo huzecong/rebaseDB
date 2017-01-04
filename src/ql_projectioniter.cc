@@ -25,7 +25,13 @@ RC QL_ProjectionIterator::GetNextRec(RM_Record &rec) {
     RM_Record input;
     char *inputData;
     bool *inputIsnull;
-    TRY(inputIter->GetNextRec(input));
+	// prevent RM_EOF from triggering error reporting mechanism in TRY
+    if (int rc = inputIter->GetNextRec(input)) {
+		if (rc != RM_EOF) {
+			TRY(rc);
+		}
+		return rc;
+	}
     TRY(input.GetData(inputData));
     TRY(input.GetIsnull(inputIsnull));
     for (int i = 0; i < projectFrom.size(); ++i) {

@@ -57,12 +57,23 @@ inline AttrMap<DataAttrInfo> create_map(const AttrList &vector) {
 AttrList joinRelations(const AttrList &relA, const AttrList &relB) {
     AttrList ret;
     int offset = 0;
+    short nullableIndex = 0;
     for (auto info : relA) {
         ret.push_back(info);
         offset += upper_align<4>(info.attrSize);
+        if (!(info.attrSpecs & ATTR_SPEC_NOTNULL)) {
+            info.nullableIndex = nullableIndex++;
+        } else {
+            info.nullableIndex = -1;
+        }
     }
     for (auto info : relB) {
         info.offset += offset;
+        if (!(info.attrSpecs & ATTR_SPEC_NOTNULL)) {
+            info.nullableIndex = nullableIndex++;
+        } else {
+            info.nullableIndex = -1;
+        }
         ret.push_back(info);
     }
     return ret;

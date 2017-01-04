@@ -471,9 +471,4 @@ RC SM_Manager::GetDataAttrInfo(const char *relName, int &attrCount, std::vector<
     return 0;
 }
 
-std::string SM_Manager::GenerateTempTableName(const std::string &prefix) {
-    static int tempTables = 0;
-    return prefix + "_tmp_" + std::to_string(tempTables++);
-}
-
 #endif //REBASE_SM_MANAGER_H
